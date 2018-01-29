@@ -64,7 +64,7 @@ class MainUI extends UI {
 
     @Override
     protected void init(VaadinRequest request) {
-        page.title = 'TimeBudgetPlanning Version 0.1'
+        page.title = 'TimeBudgetPlanning V. 0.1'
         content = initBuilder()
         initComponents()
 

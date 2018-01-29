@@ -29,6 +29,7 @@ import com.vaadin.spring.annotation.SpringComponent
 import com.vaadin.spring.annotation.UIScope
 import com.vaadin.ui.Component
 import com.vaadin.ui.Tree
+import de.geobe.tbp.core.dto.NodeDto
 import de.geobe.tbp.core.dto.TaskNodeDto
 import de.geobe.tbp.core.service.TaskService
 import de.geobe.util.vaadin.builder.SubTree
@@ -61,9 +62,9 @@ class TaskStructureTree extends SubTree
 
     private uiComponents
 
-    private Tuple2<String, Serializable> selectedProjectId
+    private NodeDto selectedProjectNode
 
-    def getSelectedProjectId() { selectedProjectId }
+    def getSelectedProjectId() { selectedProjectNode }
 
     @Autowired
     private TaskService taskService
@@ -96,6 +97,7 @@ class TaskStructureTree extends SubTree
             dto.related.subtask
         }
         treeHelper.buildTreeData(taskService.getProjectTreeRoots(), collector)
+
     }
 
     /**
@@ -103,15 +105,15 @@ class TaskStructureTree extends SubTree
      * @param event info on the newly selected tree item
      */
     private void treeValueChanged(SelectionEvent event) {
-        def selectId = event.firstSelectedItem
-        if (selectId.present) {
-            def topItemId = treeHelper.topParentForId(selectId.get())
-            if (topItemId != selectedProjectId) {
-                selectionModel.notifyRootChange(topItemId)
-                selectedProjectId = topItemId
+        def selectNode = event.firstSelectedItem
+        if (selectNode.present) {
+            def topItemNode = treeHelper.topParentForId(selectNode.get())
+            if (topItemNode != selectedProjectNode) {
+                selectionModel.notifyRootChange(topItemNode)
+                selectedProjectNode = topItemNode
             }
-            if (selectId.get() instanceof Map) {
-                selectionModel.notifyChange(selectId.get())
+            if (selectNode.isPresent() && selectNode.get() instanceof NodeDto) {
+                selectionModel.notifyChange(selectNode.get())
             }
         }
     }

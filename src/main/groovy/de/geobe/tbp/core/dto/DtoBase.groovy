@@ -56,9 +56,11 @@ class NodeDto implements IdProvider<Tuple2<String, Serializable>> {
 
     @Override
     String toString() {
-        def c = id.toString()?.charAt(0)
+        def c = id.first.toString()?.charAt(0)
         "$c: ${this.@tag}"
     }
+
+    def getType() {id.first}
 }
 
 /**

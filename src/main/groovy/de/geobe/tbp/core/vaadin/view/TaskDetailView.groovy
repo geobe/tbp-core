@@ -31,6 +31,7 @@ import com.vaadin.ui.*
 import com.vaadin.ui.themes.ValoTheme
 import de.geobe.tbp.core.domain.TaskState
 import de.geobe.tbp.core.dto.FullDto
+import de.geobe.tbp.core.dto.NodeDto
 import de.geobe.tbp.core.service.TaskService
 import de.geobe.util.vaadin.builder.VaadinBuilder
 import de.geobe.util.vaadin.type.VaadinSelectionListener
@@ -39,6 +40,9 @@ import de.geobe.util.vaadin.view.DVEvent
 import de.geobe.util.vaadin.view.DVState
 import de.geobe.util.vaadin.view.DetailViewBase
 import org.springframework.beans.factory.annotation.Autowired
+
+import java.sql.Timestamp
+import java.time.LocalDate
 
 import static VaadinBuilder.C
 import static VaadinBuilder.F
@@ -52,7 +56,7 @@ import static VaadinBuilder.F
 @SpringComponent
 @UIScope
 class TaskDetailView extends DetailViewBase
-        implements VaadinSelectionListener, VaadinTreeRootChangeListener,
+        implements VaadinSelectionListener<NodeDto>, VaadinTreeRootChangeListener<NodeDto>,
                 Serializable {
 
     /** define symbolic constants for ui element keys */
@@ -96,8 +100,10 @@ class TaskDetailView extends DetailViewBase
     Component build() {
         topComponent = vaadin."$C.vlayout"('TaskView',
                 [spacing: true, margin: true]) {
-            "$F.text"('Task', [uikey: NAME])
-            "$F.textarea"('Description', [uikey: DESCRIPTION])
+            "$F.text"('Task', [uikey: NAME,
+                               width: '80%'])
+            "$F.textarea"('Description', [uikey: DESCRIPTION,
+                                          width: '80%'])
             "$F.list"('State', [uikey: STATE,
                                 items: STATES,
                                 rows : STATES.size()])
@@ -148,7 +154,9 @@ class TaskDetailView extends DetailViewBase
         editButton = uiComponents."${subkeyPrefix}editbutton"
         saveButton = uiComponents."${subkeyPrefix}savebutton"
         cancelButton = uiComponents."${subkeyPrefix}cancelbutton"
-        taskTree.selectionModel.addListenerForKey(this, 'Task')
+        taskTree.selectionModel.addListenerForKey(this, 'CompoundTask')
+        taskTree.selectionModel.addListenerForKey(this, 'Subtask')
+        taskTree.selectionModel.addListenerForKey(this, 'Project')
         taskTree.selectionModel.addRootChangeListener(this)
         // find the top level Vaadin Window
         ui = getVaadinUi(topComponent)
@@ -159,14 +167,14 @@ class TaskDetailView extends DetailViewBase
         sm.execute(DVEvent.Init)
     }
 
-    void onItemSelected(Tuple2<String, Serializable> taskItemId) {
-        currentItemId = taskItemId
-        initItem((Long) currentItemId.second)
+    void onItemSelected(NodeDto nodeDto) {
+        currentItemId = nodeDto.id
+        initItem(currentItemId.second)
         sm.execute(DVEvent.Select)
     }
 
-    void onRootChanged(Tuple2<String, Serializable> projectItemId) {
-        currentTopItemId = projectItemId
+    void onRootChanged(NodeDto rootNodeDto) {
+        currentTopItemId = rootNodeDto.id
         sm.execute(DVEvent.Root)
     }
 
@@ -263,13 +271,15 @@ class TaskDetailView extends DetailViewBase
      */
     @Override
     protected void setFieldValues() {
-        name.value = currentDto.args['name']
-        description.value = currentDto.args['description']
-        state.value = currentDto.args['state']
-        timeBudget.value = currentDto.args['timeBudget']
-        timeUsed.value = currentDto.args['timeUsed']
-        scheduledCompletionDate.value = currentDto.args['scheduledCompletionDate']
-        completionDate.value = currentDto.args['completionDate']
+        name.value = currentDto.args['name'] ?: ''
+        description.value = currentDto.args['description'] ?: ''
+        state.select currentDto.args['state'] ?: ''
+        timeBudget.value = currentDto.args['timeBudget'] ?: ''
+        timeUsed.value = currentDto.args['timeUsed'] ?: ''
+        scheduledCompletionDate.value =
+                currentDto.args['scheduledCompletionDate'] ?: LocalDate.of(0, 0, 0)
+        completionDate.value =
+                currentDto.args['completionDate'] ?: LocalDate.of(0, 0, 0)
     }
     /**
      * create or update a domain object from the current field values and
@@ -365,7 +375,7 @@ class TaskDetailView extends DetailViewBase
             timeBudget = dialogComponents."$keyPrefix$TIME_BUDGET_PLAN"
             state = dialogComponents."$keyPrefix$STATE"
             scheduledCompletionDate = dialogComponents."$keyPrefix$COMPLETION_DATE_PLAN"
-            radiobuttongroup=dialogComponents."$keyPrefix$TYPE"
+            radiobuttongroup = dialogComponents."$keyPrefix$TYPE"
             saveButton = dialogComponents."${keyPrefix}savebutton"
             cancelButton = dialogComponents."${keyPrefix}cancelbutton"
             window.center()

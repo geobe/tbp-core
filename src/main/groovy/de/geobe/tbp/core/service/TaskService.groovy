@@ -37,6 +37,9 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+import java.sql.Timestamp
+import java.time.LocalDate
+
 /**
  * Created by georg beier on 09.01.2018.
  */
@@ -58,8 +61,8 @@ class TaskService {
     }
 
     @Transactional(readOnly = true)
-    FullDto getTaskDetails(Tuple2<String, Serializable> id) {
-        def task = taskRepository.getOne(id.value)
+    FullDto getTaskDetails(Serializable id) {
+        Task task = taskRepository.getOne(id)
         FullDto dto = makeFullDto(task)
         dto
     }
@@ -119,8 +122,19 @@ class TaskService {
             dto.args['state'] = task.state
             dto.args['timeUsed'] = task.timeUsed
             dto.args['timeBudget'] = task.timeBudget
-            dto.args['scheduledCompletionDate'] = task.scheduledCompletionDate
-            dto.args['completionDate'] = task.completionDate
+            Timestamp ts
+            if (task.scheduledCompletionDate instanceof Timestamp) {
+                ts = (Timestamp) task.scheduledCompletionDate;
+            } else {
+                ts = LocalDate.of(2000, 1, 1)
+            }
+            dto.args['scheduledCompletionDate'] = LocalDate.from ts.toLocalDateTime()
+            if (task.completionDate instanceof Timestamp) {
+                ts = (Timestamp) task.scheduledCompletionDate;
+            } else {
+                ts = LocalDate.of(2000, 1, 1)
+            }
+            dto.args['completionDate'] = LocalDate.from ts.toLocalDateTime()
         }
         dto
     }
