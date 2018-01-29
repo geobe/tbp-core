@@ -25,13 +25,17 @@
 package de.geobe.tbp.core.service
 
 import de.geobe.tbp.core.domain.CompoundTask
+import de.geobe.tbp.core.domain.Project
 import de.geobe.tbp.core.domain.Subtask
 import de.geobe.tbp.core.domain.Task
+import de.geobe.tbp.core.domain.TaskState
+import de.geobe.tbp.core.dto.FullDto
 import de.geobe.tbp.core.dto.NodeDto
 import de.geobe.tbp.core.dto.TaskNodeDto
+import de.geobe.tbp.core.repository.TaskRepository
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
-
-import javax.transaction.Transactional
+import org.springframework.transaction.annotation.Transactional
 
 /**
  * Created by georg beier on 09.01.2018.
@@ -40,16 +44,57 @@ import javax.transaction.Transactional
 @Transactional
 class TaskService {
 
-    private NodeDto makeTaskTreeNode(Task task) {
-        NodeDto dto = new TaskNodeDto([id         : task.id,
-                                       displayName: task.name,
-                                       type       : task.class.name])
-        dto.type = task.class.name
+    @Autowired
+    TaskRepository taskRepository
+
+    @Transactional(readOnly = true)
+    List<TaskNodeDto> getProjectTreeRoots() {
+        def projects = taskRepository.findAllProject()
+        def nodelist = []
+        projects.each { Project project ->
+            nodelist.add makeTaskTree(project)
+        }
+        nodelist
+    }
+
+    @Transactional(readOnly = true)
+    FullDto getTaskDetails(Tuple2<String, Serializable> id) {
+        def task = taskRepository.getOne(id.value)
+        FullDto dto = makeFullDto(task)
         dto
     }
 
     @Transactional
-    TaskNodeDto makeTaskTree(CompoundTask task) {
+    FullDto createOrUpdateTask(FullDto command) {
+        Task task
+        if (command.id.second) {
+            task = taskRepository.getOne(command.id.second)
+        } else {
+            task = makeTask(command.id)
+        }
+        task.name = command.args['name']
+        task.description = command.args['description']
+        task.state = TaskState.valueOf command.args['state'].toString()
+        task.timeBudget = (Float) command.args['timeBudget']
+        task.completionDate = (Date) command.args['completionDate']
+        task = taskRepository.saveAndFlush task
+        makeFullDto(task)
+    }
+
+    private TaskNodeDto makeTaskTreeNode(Task task) {
+        NodeDto dto = new TaskNodeDto(
+                [id : new Tuple2<String, Serializable>(makeIdKey(task), task.id),
+                 tag: task.name])
+        dto
+    }
+
+    private makeIdKey(def persistentObject) {
+        def cln = persistentObject.class.name
+        def key = cln.replaceFirst(/.*\./, '')
+        key
+    }
+
+    private TaskNodeDto makeTaskTree(CompoundTask task) {
         def dto = makeTaskTreeNode(task)
         if (task.subtask) {
             List<NodeDto> subtaskDtos = new ArrayList<>()
@@ -61,8 +106,40 @@ class TaskService {
         dto
     }
 
-    TaskNodeDto makeTaskTree(Subtask task) {
+    private TaskNodeDto makeTaskTree(Subtask task) {
         makeTaskTreeNode(task)
     }
 
+    private FullDto makeFullDto(Task task) {
+        FullDto dto = new FullDto()
+        if (task) {
+            dto.id = new Tuple2<String, Serializable>(makeIdKey(task), task.id)
+            dto.args['name'] = task.name
+            dto.args['description'] = task.description
+            dto.args['state'] = task.state
+            dto.args['timeUsed'] = task.timeUsed
+            dto.args['timeBudget'] = task.timeBudget
+            dto.args['scheduledCompletionDate'] = task.scheduledCompletionDate
+            dto.args['completionDate'] = task.completionDate
+        }
+        dto
+    }
+
+    private Task makeTask(Tuple2<String, Serializable> id) {
+        Task task
+        switch (id.first) {
+            case ~/.*Project/:
+                task = new Project()
+                break
+            case ~/.*CompoundTask/:
+                task = new CompoundTask()
+                break
+            case ~/.*Subtask/:
+                task = new Subtask()
+                break
+            default:
+                throw new IllegalArgumentException("wrong id key: ${id.first}")
+        }
+        task
+    }
 }

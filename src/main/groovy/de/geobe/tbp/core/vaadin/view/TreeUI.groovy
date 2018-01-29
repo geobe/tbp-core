@@ -36,14 +36,11 @@ import de.geobe.tbp.core.repository.TaskRepository
 import de.geobe.tbp.core.service.TaskService
 import org.springframework.beans.factory.annotation.Autowired
 
-import javax.transaction.Transactional
-
 /**
  * Created by georg beier on 15.01.2018.
  */
 @Theme('valo')
-@SpringUI(path = "/")
-@Transactional
+@SpringUI(path = "/testtree")
 class TreeUI extends UI {
 
     @Autowired
@@ -63,18 +60,13 @@ class TreeUI extends UI {
 
     }
 
-    @Transactional
     private makeProjectTreeDataProvider() {
-        def projects = taskRepository.findAllProject()
-        if (projects) {
-            def project = projects.get(0)
-            def projNode = taskService.makeTaskTree(project)
+        def projNodes = taskService.getProjectTreeRoots()
+        projNodes.each { TaskNodeDto projNode ->
             taskData.addItem(null, projNode)
             addSubNodes(taskData, projNode)
-            new TreeDataProvider<TaskNodeDto>(taskData)
-        } else {
-            null
         }
+        new TreeDataProvider<TaskNodeDto>(taskData)
     }
 
     private addSubNodes(TreeData<TaskNodeDto> data, TaskNodeDto base) {

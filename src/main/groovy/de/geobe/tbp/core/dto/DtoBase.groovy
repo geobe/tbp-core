@@ -24,19 +24,21 @@
 
 package de.geobe.tbp.core.dto
 
+import de.geobe.util.vaadin.helper.IdProvider
+
 /**
- * A Query Data Transfer Object that holds a list of QNodes to display in ListViews or similar
+ * A Query Data Transfer Object that holds a list of NodeDtos to display in ListViews or similar
  * Created by georg beier on 09.01.2018.
  *
  */
 class ListDto {
-    LinkedHashMap<Long, NodeDto> all = [:]
+    LinkedHashMap<Tuple2<String, Long>, NodeDto> all = [:]
 
-    Long getFirstId() {
+    Tuple2<String, Long> getFirstId() {
         if (all) {
             all.keySet().iterator().next()
         } else {
-            0
+            [:]
         }
     }
 }
@@ -47,25 +49,26 @@ class ListDto {
  * kinds of related objects to display associations
  * @param <K>
  */
-class NodeDto {
-    Long id
-    String type
-    String displayName
+class NodeDto implements IdProvider<Tuple2<String, Serializable>> {
+    Tuple2<String, Long> id = new Tuple2<String, Long>('', 0)
+    String tag
     Map<String, List<NodeDto>> related = [:]
 
     @Override
     String toString() {
-        this.@displayName
+        def c = id.toString()?.charAt(0)
+        "$c: ${this.@tag}"
     }
 }
 
 /**
  * A Data Transfer Object for Query and Command operations that holds the key of the
- * underlying domain object, a map with all its attribute names and values and a map
+ * underlying domain object, its typename, a map with all its attribute names and values and a map
  * with lists of QNodes of all related objects to display associations
  */
 class FullDto {
-    Long id = 0
+    Tuple2<String, Long> id = new Tuple2<String, Long>('', 0)
+    String tag
     LinkedHashMap<String, Object> args = [:]
     Map<String, List<NodeDto>> related
 }

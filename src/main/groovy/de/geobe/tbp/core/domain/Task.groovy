@@ -43,6 +43,10 @@ abstract class Task {
     String name
     String description
     TaskState state = TaskState.PLANNED
+    /** to be replaced by an evaluation of milestones */
+    Date completionDate = new Date() + 10
+    /** shall be replaced by an association to planningData */
+    Float timeBudget = 0.0
 
     @ManyToOne
     @JoinColumn(name = 'supertask_id')
@@ -58,9 +62,25 @@ abstract class Task {
     Long getId() { id }
 
     /**
-     * get scheduled completion time
+     * get completion time, to be replaced by an evaluation of milestones
      */
-    abstract Date getScheduledCompletionDate()
+//    Date getCompletionDate() {
+//        new Date() + 10
+//    }
+
+    /**
+     * get scheduled completion date, to be replaced by an evaluation of milestones
+     */
+    Date getScheduledCompletionDate() {
+        new Date() + 3
+    }
+
+    /**
+     * get the time assigned on this task
+     * @return time in working hours
+     */
+//    Float getTimeBudget() {timeBudget}
+
     /**
      * get the time already spent on this task
      * @return time in working hours

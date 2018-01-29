@@ -39,7 +39,7 @@ import javax.persistence.*
 class CompoundTask extends Task {
 
     @OneToMany(mappedBy = 'supertask',
-            cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+            cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
     protected Set<Task> subtasks = new HashSet<>()
     @Transient
     private ToMany<CompoundTask, Task> toSubtasks = new ToMany<>(
