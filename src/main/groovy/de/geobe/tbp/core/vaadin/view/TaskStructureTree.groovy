@@ -57,14 +57,19 @@ class TaskStructureTree extends SubTree
 
     private static final String TASKTREE = 'tasktree'
     private static final String MENU = 'logoutmenu'
-    private Tree taskTree
+    private Tree<NodeDto> taskTree
     private VaadinTreeHelper treeHelper
 
     private uiComponents
 
     private NodeDto selectedProjectNode
+    private VaadinSelectionModel selectionModel = new VaadinSelectionModel()
 
-    def getSelectedProjectId() { selectedProjectNode }
+    /** Closure to find subnodes to a task node */
+    private collector = { TaskNodeDto dto ->
+        dto.related.subtask
+    }
+    private getSelectedProjectId() { selectedProjectNode.id }
 
     @Autowired
     private TaskService taskService
@@ -72,7 +77,6 @@ class TaskStructureTree extends SubTree
 //    @Autowired
 //    private VaadinSecurity vaadinSecurity
 
-    VaadinSelectionModel selectionModel = new VaadinSelectionModel()
 
     @Override
     Component build() {
@@ -93,10 +97,7 @@ class TaskStructureTree extends SubTree
         uiComponents = vaadin.uiComponents
         taskTree = uiComponents."${subkeyPrefix + TASKTREE}"
         treeHelper = new VaadinTreeHelper<TaskNodeDto>(taskTree)
-        def collector = { TaskNodeDto dto ->
-            dto.related.subtask
-        }
-        treeHelper.buildTreeData(taskService.getProjectTreeRoots(), collector)
+        treeHelper.buildTree(taskService.getProjectTree(), collector)
 
     }
 
@@ -139,16 +140,17 @@ class TaskStructureTree extends SubTree
      */
     public void onEditItemDone(Object itemId, String caption, boolean mustReload = false) {
         if (mustReload) {
-            def expandedNodes = treeHelper.allExpanded
-            taskTree.removeAllItems()
-            buildTree(taskTree)
-            def select = treeHelper.findMatchingId(itemId)
-            if (select)
-                taskTree.select(select)
-            treeHelper.reexpand(expandedNodes)
+            def expandedNodeIds = treeHelper.idsOfExpanded
+            def selectedNodeId = itemId//taskTree.selectedItems.find()?.id
+            treeHelper.clear()
+            treeHelper.buildTree(taskService.getProjectTree(), collector)
+            treeHelper.reexpand(expandedNodeIds)
+            treeHelper.reselect(selectedNodeId)
         } else {
-            if (taskTree.getItemCaption(itemId) != caption) {
-                taskTree.setItemCaption(itemId, caption)
+            def selected = taskTree.selectedItems?.first()
+            if (selected?.id == itemId && selected?.tag != caption) {
+                selected.tag = caption
+                taskTree.dataProvider.refreshAll()
             }
         }
         taskTree.enabled = true

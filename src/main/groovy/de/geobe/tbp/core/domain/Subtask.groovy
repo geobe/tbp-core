@@ -32,8 +32,11 @@ import javax.persistence.Entity
 @Entity(name = 'TBL_SUBTASK')
 class Subtask extends Task {
 
-    Date scheduledCompletionDate = new Date().clearTime()
-    Float timeUsed = 0.0
+    Float timeUsed = 7.07
+
+    Subtask() {
+        scheduledCompletionDate = new Date().clearTime()
+    }
 
     /**
      * get scheduled completion time

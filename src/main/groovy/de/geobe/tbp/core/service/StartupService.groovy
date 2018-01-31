@@ -78,7 +78,8 @@ class StartupService implements IStartupService {
                                    scheduledCompletionDate: (new Date() + 1).clearTime()])
             def ex5 = new Subtask([name                   : 'Test MMicroservice Examples',
                                    scheduledCompletionDate: (new Date() + 15).clearTime()])
-            exmon.subtask.add([ex1,ex2])
+            exmon.subtask.add(ex1)
+            ex2.supertask.add exmon
             exmic.subtask.add([ex3, ex4, ex5])
             taskRepository.saveAndFlush(proj)
         }

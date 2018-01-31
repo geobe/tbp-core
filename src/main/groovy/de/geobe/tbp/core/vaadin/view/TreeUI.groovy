@@ -61,7 +61,7 @@ class TreeUI extends UI {
     }
 
     private makeProjectTreeDataProvider() {
-        def projNodes = taskService.getProjectTreeRoots()
+        def projNodes = taskService.getProjectTree()
         projNodes.each { TaskNodeDto projNode ->
             taskData.addItem(null, projNode)
             addSubNodes(taskData, projNode)

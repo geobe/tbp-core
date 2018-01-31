@@ -37,7 +37,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
-import java.sql.Timestamp
 import java.time.LocalDate
 
 /**
@@ -51,18 +50,18 @@ class TaskService {
     TaskRepository taskRepository
 
     @Transactional(readOnly = true)
-    List<TaskNodeDto> getProjectTreeRoots() {
+    List<TaskNodeDto> getProjectTree() {
         def projects = taskRepository.findAllProject()
         def nodelist = []
         projects.each { Project project ->
-            nodelist.add makeTaskTree(project)
+            nodelist.add makeTaskSubTree(project)
         }
         nodelist
     }
 
     @Transactional(readOnly = true)
     FullDto getTaskDetails(Serializable id) {
-        Task task = taskRepository.getOne(id)
+        Task task = taskRepository.findOne(id)
         FullDto dto = makeFullDto(task)
         dto
     }
@@ -70,21 +69,42 @@ class TaskService {
     @Transactional
     FullDto createOrUpdateTask(FullDto command) {
         Task task
+        Task supertask
         if (command.id.second) {
-            task = taskRepository.getOne(command.id.second)
+            task = taskRepository.findOne(command.id.second)
         } else {
             task = makeTask(command.id)
+            def superId = command.related.supertask?.first()?.id?.second
+            if (superId) {
+                supertask = taskRepository.findOne(superId)
+            }
         }
         task.name = command.args['name']
         task.description = command.args['description']
-        task.state = TaskState.valueOf command.args['state'].toString()
-        task.timeBudget = (Float) command.args['timeBudget']
-        task.completionDate = (Date) command.args['completionDate']
+        def st = command.args['state'].find()
+        task.state = st ?: TaskState.PLANNED
+        def fl = command.args['timeBudget']
+        if (fl && fl ==~ /[0-9]*\.{0,1}[0-9]*/) {
+            task.timeBudget = Float.valueOf(fl)
+        }
+        LocalDate date = command.args['completionDate']
+        task.completionDate = date?.toDate()//LocalDateExtension.toDate(date)
+        date = command.args['scheduledCompletionDate']
+        task.scheduledCompletionDate = date?.toDate()//LocalDateExtension.toDate(date)
         task = taskRepository.saveAndFlush task
+        if (supertask) {
+            println "Task[${task.class.name}]: ${task.name}(${task.id})"
+            println "Supertask[${supertask.class.name}]: ${supertask.name}(${supertask.id})"
+            if (supertask instanceof Subtask)
+                supertask = supertask.supertask.one
+//            ((CompoundTask) supertask).subtask.add(task)
+            task.supertask.add supertask
+            taskRepository.saveAndFlush(task)
+        }
         makeFullDto(task)
     }
 
-    private TaskNodeDto makeTaskTreeNode(Task task) {
+    private TaskNodeDto makeTaskNode(Task task) {
         NodeDto dto = new TaskNodeDto(
                 [id : new Tuple2<String, Serializable>(makeIdKey(task), task.id),
                  tag: task.name])
@@ -97,20 +117,20 @@ class TaskService {
         key
     }
 
-    private TaskNodeDto makeTaskTree(CompoundTask task) {
-        def dto = makeTaskTreeNode(task)
+    private TaskNodeDto makeTaskSubTree(CompoundTask task) {
+        def dto = makeTaskNode(task)
         if (task.subtask) {
             List<NodeDto> subtaskDtos = new ArrayList<>()
             dto.related['subtask'] = subtaskDtos
             task.subtask.all.each {
-                subtaskDtos.add(makeTaskTree(it))
+                subtaskDtos.add(makeTaskSubTree(it))
             }
         }
         dto
     }
 
-    private TaskNodeDto makeTaskTree(Subtask task) {
-        makeTaskTreeNode(task)
+    private TaskNodeDto makeTaskSubTree(Subtask task) {
+        makeTaskNode(task)
     }
 
     private FullDto makeFullDto(Task task) {
@@ -122,19 +142,22 @@ class TaskService {
             dto.args['state'] = task.state
             dto.args['timeUsed'] = task.timeUsed
             dto.args['timeBudget'] = task.timeBudget
-            Timestamp ts
-            if (task.scheduledCompletionDate instanceof Timestamp) {
-                ts = (Timestamp) task.scheduledCompletionDate;
+            def sccomp = task.scheduledCompletionDate
+            if (sccomp instanceof Date) {
+                dto.args['scheduledCompletionDate'] = sccomp.toLocalDate();
             } else {
-                ts = LocalDate.of(2000, 1, 1)
+                dto.args['scheduledCompletionDate'] = LocalDate.of(2000, 1, 1)
             }
-            dto.args['scheduledCompletionDate'] = LocalDate.from ts.toLocalDateTime()
-            if (task.completionDate instanceof Timestamp) {
-                ts = (Timestamp) task.scheduledCompletionDate;
+            def comp = task.completionDate
+            if (comp instanceof Date) {
+                dto.args['completionDate'] = comp.toLocalDate()
             } else {
-                ts = LocalDate.of(2000, 1, 1)
+                dto.args['completionDate'] = LocalDate.of(2000, 1, 1)
             }
-            dto.args['completionDate'] = LocalDate.from ts.toLocalDateTime()
+            dto.related.supertask = task?.supertask.all.collect { makeTaskNode(it) } ?: []
+            if (task instanceof CompoundTask) {
+                dto.related.subtask = task?.subtask.all.collect { makeTaskNode(it) } ?: []
+            }
         }
         dto
     }

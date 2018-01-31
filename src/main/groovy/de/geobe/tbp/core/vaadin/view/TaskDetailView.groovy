@@ -24,7 +24,9 @@
 
 package de.geobe.tbp.core.vaadin.view
 
+import com.vaadin.data.HasValue
 import com.vaadin.event.ShortcutAction
+import com.vaadin.server.Sizeable
 import com.vaadin.spring.annotation.SpringComponent
 import com.vaadin.spring.annotation.UIScope
 import com.vaadin.ui.*
@@ -41,7 +43,6 @@ import de.geobe.util.vaadin.view.DVState
 import de.geobe.util.vaadin.view.DetailViewBase
 import org.springframework.beans.factory.annotation.Autowired
 
-import java.sql.Timestamp
 import java.time.LocalDate
 
 import static VaadinBuilder.C
@@ -118,7 +119,7 @@ class TaskDetailView extends DetailViewBase
                 "$F.button"('New',
                         [uikey         : 'newbutton',
                          disableOnClick: true,
-                         clickListener : { sm.execute(DVEvent.Create) }])
+                         clickListener : { sm.execute(DVEvent.Dialog) }])
                 "$F.button"('Edit',
                         [uikey         : 'editbutton',
                          disableOnClick: true,
@@ -163,7 +164,7 @@ class TaskDetailView extends DetailViewBase
         // build dialog window
         dialog.build()
         // create and initialize state machine
-        initSm(DVState.INIT)
+        initSm(DVState.TOPVIEW)
         sm.execute(DVEvent.Init)
     }
 
@@ -185,7 +186,7 @@ class TaskDetailView extends DetailViewBase
     protected getCurrentDomainId() { currentItemId }
 
     @Override
-    protected String getCurrentCaption() { currentDto.tag }
+    protected String getCurrentCaption() { currentDto?.args?.name ?: '' }
 
     @Override
     protected getMatchForNewItem() { [type: ProjectTree.TASK_TYPE, id: currentDto.id] }
@@ -193,20 +194,24 @@ class TaskDetailView extends DetailViewBase
     /** prepare INIT state */
     @Override
     protected initmode() {
-        [name, description, completionDate, saveButton, cancelButton, editButton, newButton].each { it.enabled = false }
+        [name, description, completionDate, state, timeBudget, timeUsed,
+         scheduledCompletionDate, completionDate,
+         saveButton, cancelButton, editButton, newButton].each { it.enabled = false }
     }
     /** prepare EMPTY state */
     @Override
     protected emptymode() {
         clearFields()
         currentDto = null
-        [name, description, completionDate, saveButton, cancelButton, editButton].each { it.enabled = false }
+        [name, description, completionDate, state, timeBudget,
+         saveButton, cancelButton, editButton].each { it.enabled = false }
         [newButton].each { it.enabled = true }
     }
     /** prepare SHOW state */
     @Override
     protected showmode() {
-        [name, description, completionDate, saveButton, cancelButton].each { it.enabled = false }
+        [name, description, state, timeBudget, timeUsed, completionDate, scheduledCompletionDate,
+         saveButton, cancelButton].each { it.enabled = false }
         [editButton, newButton].each { it.enabled = true }
     }
 
@@ -218,8 +223,8 @@ class TaskDetailView extends DetailViewBase
     @Override
     protected createmode() {
         taskTree.onEditItem()
-        [name, description, completionDate, saveButton, cancelButton].
-                each { it.enabled = true }
+        [name, description, completionDate, state, timeBudget, timeUsed,
+         scheduledCompletionDate, saveButton, cancelButton].each { it.enabled = true }
         [editButton, newButton].each { it.enabled = false }
 //        saveButton.setClickShortcut(ShortcutAction.KeyCode.ENTER)
     }
@@ -227,23 +232,35 @@ class TaskDetailView extends DetailViewBase
     @Override
     protected editmode() {
         taskTree.onEditItem()
-        if (currentDto.classname == 'Subtask')
-            completionDate.enabled = true
-        [name, description, saveButton, cancelButton].each { it.enabled = true }
+        if (currentDto.id.first == 'Subtask')
+            [timeUsed, completionDate].each {it.enabled = true}
+        [name, description, state, timeBudget, scheduledCompletionDate,
+         saveButton, cancelButton].each { it.enabled = true }
         [editButton, newButton].each { it.enabled = false }
-//        saveButton.setClickShortcut(ShortcutAction.KeyCode.ENTER)
+        saveButton.setClickShortcut(ShortcutAction.KeyCode.ENTER)
     }
     /** prepare for working in DIALOG state */
     protected dialogmode() {
         taskTree.onEditItem()
-        [dialog.name, dialog.timeBudget, dialog.spent, dialog.description,
-         dialog.completed, dialog.supertask].each { it.clear() }
-        [dialog.saveButton, dialog.cancelButton].each { it.enabled = true }
+        [dialog.name, dialog.timeBudget, dialog.description,
+         dialog.scheduledCompletionDate].each { it.clear() }
+        if(currentItemId) {
+            dialog.typeSelection.setSelectedItem(null)
+            dialog.typeSelection.enabled = true
+            dialog.saveButton.enabled = false
+        } else {
+            dialog.typeSelection.setSelectedItem('Project')
+            dialog.typeSelection.enabled = false
+            dialog.saveButton.enabled = true
+        }
+        dialog.cancelButton.enabled = true
         ui.addWindow(dialog.window)
     }
     /** leaving DIALOG state with save */
     protected saveDialog() {
-        createSubtask()
+        currentDto = createNewItem()
+        currentItemId = currentDto.id
+        setFieldValues()
         dialog.window.close()
         taskTree.onEditItemDone(currentItemId, currentCaption, true)
     }
@@ -255,7 +272,9 @@ class TaskDetailView extends DetailViewBase
     /** clear all editable fields */
     @Override
     protected clearFields() {
-        [name, description, completionDate].each { it.clear() }
+        state.deselectAll()
+        [name, description, timeBudget, timeUsed,
+         scheduledCompletionDate, completionDate].each { it.clear() }
     }
     /**
      * for the given persistent object id, fetch the full dto and save it in field currentDto
@@ -273,9 +292,10 @@ class TaskDetailView extends DetailViewBase
     protected void setFieldValues() {
         name.value = currentDto.args['name'] ?: ''
         description.value = currentDto.args['description'] ?: ''
+        state.deselectAll()
         state.select currentDto.args['state'] ?: ''
-        timeBudget.value = currentDto.args['timeBudget'] ?: ''
-        timeUsed.value = currentDto.args['timeUsed'] ?: ''
+        timeBudget.value = currentDto.args['timeBudget']?.toString() ?: ''
+        timeUsed.value = currentDto.args['timeUsed']?.toString() ?: ''
         scheduledCompletionDate.value =
                 currentDto.args['scheduledCompletionDate'] ?: LocalDate.of(0, 0, 0)
         completionDate.value =
@@ -298,9 +318,9 @@ class TaskDetailView extends DetailViewBase
         args['description'] = description.value
         args['state'] = state.value
         args['timeBudget'] = timeBudget.value
-//        args['timeUsed'] = timeUsed.value
-//        args['scheduledCompletionDate'] = scheduledCompletionDate.value
-//        args['completionDate'] = completionDate.value
+        args['timeUsed'] = timeUsed.value
+        args['scheduledCompletionDate'] = scheduledCompletionDate.value
+        args['completionDate'] = completionDate.value
 //        // determine level for a new item
 //        if (id.second == 0) {
 //            if (!currentDto || currentDto.related.all) {
@@ -314,17 +334,24 @@ class TaskDetailView extends DetailViewBase
         currentDto = taskService.createOrUpdateTask(command)
     }
 
-    def createSubtask() {
+    def createNewItem() {
         FullDto command = new FullDto()
-        command.id = new Tuple2<String, Long>('Subtask', 0)
-        command.tag = dialog.name.value
-        def args = command.args
-        args['name'] = dialog.name.value
-        args['description'] = dialog.description.value
-        args['state'] = dialog.state.value
-        args['timeBudget'] = dialog.timeBudget.value
-        def newNode = taskService.createOrUpdateTask(command)
-        newNode
+        def newType = dialog.typeSelection.getSelectedItem()
+        if (newType.present) {
+            command.id = new Tuple2<String, Long>(newType.get(), 0)
+            command.tag = dialog.name.value
+            def args = command.args
+            args['name'] = dialog.name.value
+            args['description'] = dialog.description.value
+            args['state'] = dialog.state.value
+            args['timeBudget'] = dialog.timeBudget.value
+            args['scheduledCompletionDate'] = dialog.scheduledCompletionDate.value
+            if(newType.get() != 'Project') {
+                command.related['supertask'] = [currentDto]
+            }
+            def newNode = taskService.createOrUpdateTask(command)
+            newNode
+        }
     }
 
     private class NewTaskDialog {
@@ -332,7 +359,7 @@ class TaskDetailView extends DetailViewBase
         TextField name, timeBudget
         TextArea description
         ListSelect<String> state
-        RadioButtonGroup radiobuttongroup
+        RadioButtonGroup<String> typeSelection
         DateField scheduledCompletionDate
 
         Button saveButton, cancelButton
@@ -344,12 +371,20 @@ class TaskDetailView extends DetailViewBase
             String keyPrefix = "${subkeyPrefix}dialog."
             winBuilder.keyPrefix = keyPrefix
             window = winBuilder."$C.window"('create Task',
-                    [spacing: true, margin: true,
-                     modal  : true, closable: false]) {
+                    [spacing: true,
+                     margin: true,
+                     width: '30%',
+                     modal  : true,
+                     closable: false]) {
                 "$C.vlayout"('top', [spacing: true, margin: true]) {
                     "$F.text"('Task', [uikey: NAME])
-                    "$F.radiobuttongroup"('Type', [uikey: TYPE,
-                                                   items: ['Project', 'CompoundTask', 'Subtask']])
+                    "$F.radiobuttongroup"('Type', [uikey            : TYPE,
+                                                   items            : ['Project',
+                                                                       'CompoundTask',
+                                                                       'Subtask'],
+                                                   selectionListener: {
+                                                       saveButton.enabled = true
+                                                   }])
                     "$F.textarea"('Description', [uikey: DESCRIPTION])
                     "$F.list"('State', [uikey: STATE,
                                         items: STATES,
@@ -363,7 +398,7 @@ class TaskDetailView extends DetailViewBase
                                  clickListener : { sm.execute(DVEvent.Cancel) }])
                         "$F.button"('Save',
                                 [uikey         : 'savebutton',
-                                 disableOnClick: true, enabled: true,
+                                 disableOnClick: true, enabled: false,
                                  clickListener : { sm.execute(DVEvent.Save) }])
                     }
                 }
@@ -375,10 +410,11 @@ class TaskDetailView extends DetailViewBase
             timeBudget = dialogComponents."$keyPrefix$TIME_BUDGET_PLAN"
             state = dialogComponents."$keyPrefix$STATE"
             scheduledCompletionDate = dialogComponents."$keyPrefix$COMPLETION_DATE_PLAN"
-            radiobuttongroup = dialogComponents."$keyPrefix$TYPE"
+            typeSelection = dialogComponents."$keyPrefix$TYPE"
             saveButton = dialogComponents."${keyPrefix}savebutton"
             cancelButton = dialogComponents."${keyPrefix}cancelbutton"
             window.center()
+            window
         }
     }
 

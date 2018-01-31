@@ -29,7 +29,10 @@ import javax.persistence.Entity
 /**
  * Created by georg beier on 04.01.2018.
  */
-@Entity(name='TBL_PROJECT')
+@Entity(name = 'TBL_PROJECT')
 class Project extends CompoundTask {
-    Date scheduledCompletionDate = (new Date() + 10).clearTime()
+
+    Project() {
+        scheduledCompletionDate = (new Date() + 10).clearTime()
+    }
 }

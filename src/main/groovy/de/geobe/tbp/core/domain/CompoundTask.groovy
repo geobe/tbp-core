@@ -40,7 +40,7 @@ class CompoundTask extends Task {
 
     @OneToMany(mappedBy = 'supertask',
             cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
-    protected Set<Task> subtasks = new HashSet<>()
+    protected List<Task> subtasks = new ArrayList<>()
     @Transient
     private ToMany<CompoundTask, Task> toSubtasks = new ToMany<>(
             { this.@subtasks } as IToAny.IGet, this,
@@ -58,7 +58,7 @@ class CompoundTask extends Task {
             def enddate = subtasks.collect {it.scheduledCompletionDate}.min()
             return enddate
         } else {
-            return (new Date() - 1).clearTime()
+            return super.scheduledCompletionDate
         }
     }
 
