@@ -49,7 +49,7 @@ import static de.geobe.util.vaadin.builder.VaadinBuilder.F
 @SpringComponent
 @UIScope
 class TaskStructureTree extends SubTree
-        implements Serializable, DetailSelector {
+        implements Serializable, DetailSelector<Tuple2<String, Serializable>> {
 
     public static final String PROJECT_TYPE = 'Project'
     public static final String COMPOUND_TYPE = 'CompoundTask'
@@ -138,7 +138,7 @@ class TaskStructureTree extends SubTree
      * @param mustReload tree must reload after new item was created
      *        or structure changed
      */
-    public void onEditItemDone(Object itemId, String caption, boolean mustReload = false) {
+    public void onEditItemDone(Tuple2<String, Serializable> itemId, String caption, boolean mustReload = false) {
         if (mustReload) {
             def expandedNodeIds = treeHelper.idsOfExpanded
             def selectedNodeId = itemId//taskTree.selectedItems.find()?.id

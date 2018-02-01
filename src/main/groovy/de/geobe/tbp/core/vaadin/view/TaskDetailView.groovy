@@ -24,9 +24,7 @@
 
 package de.geobe.tbp.core.vaadin.view
 
-import com.vaadin.data.HasValue
 import com.vaadin.event.ShortcutAction
-import com.vaadin.server.Sizeable
 import com.vaadin.spring.annotation.SpringComponent
 import com.vaadin.spring.annotation.UIScope
 import com.vaadin.ui.*
@@ -35,12 +33,13 @@ import de.geobe.tbp.core.domain.TaskState
 import de.geobe.tbp.core.dto.FullDto
 import de.geobe.tbp.core.dto.NodeDto
 import de.geobe.tbp.core.service.TaskService
+import de.geobe.util.statemachine.samples.DVEvent
+import de.geobe.util.statemachine.samples.DVState
+import de.geobe.util.statemachine.samples.DetailViewBehavior
+import de.geobe.util.vaadin.builder.SubTree
 import de.geobe.util.vaadin.builder.VaadinBuilder
 import de.geobe.util.vaadin.type.VaadinSelectionListener
 import de.geobe.util.vaadin.type.VaadinTreeRootChangeListener
-import de.geobe.util.vaadin.view.DVEvent
-import de.geobe.util.vaadin.view.DVState
-import de.geobe.util.vaadin.view.DetailViewBase
 import org.springframework.beans.factory.annotation.Autowired
 
 import java.time.LocalDate
@@ -56,7 +55,7 @@ import static VaadinBuilder.F
 
 @SpringComponent
 @UIScope
-class TaskDetailView extends DetailViewBase
+class TaskDetailView extends SubTree
         implements VaadinSelectionListener<NodeDto>, VaadinTreeRootChangeListener<NodeDto>,
                 Serializable {
 
@@ -96,7 +95,6 @@ class TaskDetailView extends DetailViewBase
     @Autowired
     private TaskStructureTree taskTree
 
-
     @Override
     Component build() {
         topComponent = vaadin."$C.vlayout"('TaskView',
@@ -119,22 +117,22 @@ class TaskDetailView extends DetailViewBase
                 "$F.button"('New',
                         [uikey         : 'newbutton',
                          disableOnClick: true,
-                         clickListener : { sm.execute(DVEvent.Dialog) }])
+                         clickListener : { viewBehavior.execute(DVEvent.Dialog) }])
                 "$F.button"('Edit',
                         [uikey         : 'editbutton',
                          disableOnClick: true,
-                         clickListener : { sm.execute(DVEvent.Edit) }])
+                         clickListener : { viewBehavior.execute(DVEvent.Edit) }])
                 "$F.button"('Cancel',
                         [uikey         : 'cancelbutton',
                          disableOnClick: true,
                          enabled       : false,
-                         clickListener : { sm.execute(DVEvent.Cancel) }])
+                         clickListener : { viewBehavior.execute(DVEvent.Cancel) }])
                 "$F.button"('Save',
                         [uikey         : 'savebutton',
                          disableOnClick: true, enabled: false,
                          clickShortcut : ShortcutAction.KeyCode.ENTER,
                          styleName     : ValoTheme.BUTTON_PRIMARY,
-                         clickListener : { sm.execute(DVEvent.Save) }])
+                         clickListener : { viewBehavior.execute(DVEvent.Save) }])
             }
         }
         topComponent
@@ -142,7 +140,6 @@ class TaskDetailView extends DetailViewBase
 
     @Override
     void init(Object... value) {
-        detailSelector = taskTree
         uiComponents = vaadin.uiComponents
         name = uiComponents."$subkeyPrefix$NAME"
         description = uiComponents."$subkeyPrefix$DESCRIPTION"
@@ -164,193 +161,202 @@ class TaskDetailView extends DetailViewBase
         // build dialog window
         dialog.build()
         // create and initialize state machine
-        initSm(DVState.TOPVIEW)
-        sm.execute(DVEvent.Init)
+        viewBehavior.initSm(DVState.TOPVIEW)
+        viewBehavior.execute(DVEvent.Init)
     }
 
     void onItemSelected(NodeDto nodeDto) {
         currentItemId = nodeDto.id
-        initItem(currentItemId.second)
-        sm.execute(DVEvent.Select)
+        viewBehavior.initItem(currentItemId.second)
+        viewBehavior.execute(DVEvent.Select)
     }
 
     void onRootChanged(NodeDto rootNodeDto) {
         currentTopItemId = rootNodeDto.id
-        sm.execute(DVEvent.Root)
+        viewBehavior.execute(DVEvent.Root)
     }
 
-    @Override
-    protected getCurrentItemId() { currentItemId }
-
-    @Override
-    protected getCurrentDomainId() { currentItemId }
-
-    @Override
-    protected String getCurrentCaption() { currentDto?.args?.name ?: '' }
-
-    @Override
-    protected getMatchForNewItem() { [type: ProjectTree.TASK_TYPE, id: currentDto.id] }
-
-    /** prepare INIT state */
-    @Override
-    protected initmode() {
-        [name, description, completionDate, state, timeBudget, timeUsed,
-         scheduledCompletionDate, completionDate,
-         saveButton, cancelButton, editButton, newButton].each { it.enabled = false }
-    }
-    /** prepare EMPTY state */
-    @Override
-    protected emptymode() {
-        clearFields()
-        currentDto = null
-        [name, description, completionDate, state, timeBudget,
-         saveButton, cancelButton, editButton].each { it.enabled = false }
-        [newButton].each { it.enabled = true }
-    }
-    /** prepare SHOW state */
-    @Override
-    protected showmode() {
-        [name, description, state, timeBudget, timeUsed, completionDate, scheduledCompletionDate,
-         saveButton, cancelButton].each { it.enabled = false }
-        [editButton, newButton].each { it.enabled = true }
-    }
-
-    @Override
-    protected createemptymode() {
-        createmode()
-    }
-
-    @Override
-    protected createmode() {
-        taskTree.onEditItem()
-        [name, description, completionDate, state, timeBudget, timeUsed,
-         scheduledCompletionDate, saveButton, cancelButton].each { it.enabled = true }
-        [editButton, newButton].each { it.enabled = false }
+    /**
+     * View behavior is implemented using this specialised state machine
+     */
+    private DetailViewBehavior viewBehavior = new DetailViewBehavior() {
+        /** prepare INIT state, not needed now */
+        @Override
+        protected void initmode() {
+            [name, description, completionDate, state, timeBudget, timeUsed,
+             scheduledCompletionDate, completionDate,
+             saveButton, cancelButton, editButton, newButton].each { it.enabled = false }
+        }
+        /** prepare CREATEEMPTY state, not needed now */
+        @Override
+        protected void createemptymode() {
+            createmode()
+        }
+        /** prepare CREATE state, not needed now */
+        @Override
+        protected void createmode() {
+            taskTree.onEditItem()
+            [name, description, completionDate, state, timeBudget, timeUsed,
+             scheduledCompletionDate, saveButton, cancelButton].each { it.enabled = true }
+            [editButton, newButton].each { it.enabled = false }
 //        saveButton.setClickShortcut(ShortcutAction.KeyCode.ENTER)
-    }
-    /** prepare for editing in EDIT states */
-    @Override
-    protected editmode() {
-        taskTree.onEditItem()
-        if (currentDto.id.first == 'Subtask')
-            [timeUsed, completionDate].each {it.enabled = true}
-        [name, description, state, timeBudget, scheduledCompletionDate,
-         saveButton, cancelButton].each { it.enabled = true }
-        [editButton, newButton].each { it.enabled = false }
-        saveButton.setClickShortcut(ShortcutAction.KeyCode.ENTER)
-    }
-    /** prepare for working in DIALOG state */
-    protected dialogmode() {
-        taskTree.onEditItem()
-        [dialog.name, dialog.timeBudget, dialog.description,
-         dialog.scheduledCompletionDate].each { it.clear() }
-        if(currentItemId) {
+        }
+        /** prepare for editing in EDIT state */
+        @Override
+        protected void editmode() {
+            taskTree.onEditItem()
+            if (currentDto.id.first == 'Subtask')
+                [timeUsed, completionDate].each { it.enabled = true }
+            [name, description, state, timeBudget, scheduledCompletionDate,
+             saveButton, cancelButton].each { it.enabled = true }
+            [editButton, newButton].each { it.enabled = false }
+            saveButton.setClickShortcut(ShortcutAction.KeyCode.ENTER)
+        }
+        /** prepare EMPTY state */
+        @Override
+        protected void emptymode() {
+            clearFields()
+            currentDto = null
+            [name, description, completionDate, state, timeBudget,
+             saveButton, cancelButton, editButton].each { it.enabled = false }
+            [newButton].each { it.enabled = true }
+        }
+        /** prepare SHOW state */
+        @Override
+        protected void showmode() {
+            [name, description, state, timeBudget, timeUsed, completionDate, scheduledCompletionDate,
+             saveButton, cancelButton].each { it.enabled = false }
+            [editButton, newButton].each { it.enabled = true }
+        }
+        /** prepare for working in DIALOG state */
+        @Override
+        protected void dialogmode() {
             dialog.typeSelection.setSelectedItem(null)
             dialog.typeSelection.enabled = true
             dialog.saveButton.enabled = false
-        } else {
+            prepareDialog()
+        }
+        /** prepare for working in DIALOGEMPTY state */
+        @Override
+        protected void dialogemptymode() {
             dialog.typeSelection.setSelectedItem('Project')
             dialog.typeSelection.enabled = false
             dialog.saveButton.enabled = true
+            prepareDialog()
         }
-        dialog.cancelButton.enabled = true
-        ui.addWindow(dialog.window)
-    }
-    /** leaving DIALOG state with save */
-    protected saveDialog() {
-        currentDto = createNewItem()
-        currentItemId = currentDto.id
-        setFieldValues()
-        dialog.window.close()
-        taskTree.onEditItemDone(currentItemId, currentCaption, true)
-    }
-    /** leaving DIALOG state with cancel */
-    protected cancelDialog() {
-        dialog.window.close()
-        taskTree.onEditItemDone(currentItemId, currentCaption)
-    }
-    /** clear all editable fields */
-    @Override
-    protected clearFields() {
-        state.deselectAll()
-        [name, description, timeBudget, timeUsed,
-         scheduledCompletionDate, completionDate].each { it.clear() }
-    }
-    /**
-     * for the given persistent object id, fetch the full dto and save it in field currentDto
-     * @param itemId object id
-     */
-    @Override
-    protected void initItem(Long taskId) {
-        currentDto = taskService.getTaskDetails(taskId)
-        setFieldValues()
-    }
-    /**
-     * set all fields from the current full dto object
-     */
-    @Override
-    protected void setFieldValues() {
-        name.value = currentDto.args['name'] ?: ''
-        description.value = currentDto.args['description'] ?: ''
-        state.deselectAll()
-        state.select currentDto.args['state'] ?: ''
-        timeBudget.value = currentDto.args['timeBudget']?.toString() ?: ''
-        timeUsed.value = currentDto.args['timeUsed']?.toString() ?: ''
-        scheduledCompletionDate.value =
-                currentDto.args['scheduledCompletionDate'] ?: LocalDate.of(0, 0, 0)
-        completionDate.value =
-                currentDto.args['completionDate'] ?: LocalDate.of(0, 0, 0)
-    }
-    /**
-     * create or update a domain object from the current field values and
-     * update the current dto from the saved domain object
-     *
-     * @param id domain id of domain object or 0 (zero) to create a new
-     * @return updated current dto
-     */
-    @Override
-    protected saveItem(Tuple2<String, Serializable> id = new Tuple2<>('', 0)) {
-        FullDto command = new FullDto()
-        command.id = id
-        command.tag = name.value
-        def args = command.args
-        args['name'] = name.value
-        args['description'] = description.value
-        args['state'] = state.value
-        args['timeBudget'] = timeBudget.value
-        args['timeUsed'] = timeUsed.value
-        args['scheduledCompletionDate'] = scheduledCompletionDate.value
-        args['completionDate'] = completionDate.value
-//        // determine level for a new item
-//        if (id.second == 0) {
-//            if (!currentDto || currentDto.related.all) {
-//                // we are on top level of tasks
-//                command.projectId = (Long) currentTopItemId['id']
-//            } else {
-//                // we are on a lower level
-//                command.supertaskId = currentDto.supertask.firstId
-//            }
-//        }
-        currentDto = taskService.createOrUpdateTask(command)
-    }
+        /** common functionality for create dialogs */
+        private void prepareDialog() {
+            taskTree.onEditItem()
+            [dialog.name, dialog.timeBudget, dialog.description,
+             dialog.scheduledCompletionDate].each { it.clear() }
+            dialog.state.deselectAll()
+            dialog.cancelButton.enabled = true
+            dialog.saveButton.setClickShortcut(ShortcutAction.KeyCode.ENTER)
+            ui.addWindow(dialog.window)
+        }
+        /** leaving DIALOG state with save */
+        protected void saveDialog() {
+            currentDto = createNewItem()
+            currentItemId = currentDto.id
+            setFieldValues()
+            dialog.window.close()
+            onEditDone(true)
+        }
 
-    def createNewItem() {
-        FullDto command = new FullDto()
-        def newType = dialog.typeSelection.getSelectedItem()
-        if (newType.present) {
-            command.id = new Tuple2<String, Long>(newType.get(), 0)
-            command.tag = dialog.name.value
+        /** leaving DIALOG state with cancel */
+        protected void cancelDialog() {
+            dialog.window.close()
+            onEditDone()
+        }
+
+        /** clear all editable fields */
+        @Override
+        protected void clearFields() {
+            state.deselectAll()
+            [name, description, timeBudget, timeUsed,
+             scheduledCompletionDate, completionDate].each { it.clear() }
+        }
+
+        /**
+         * Initialize all fields for a new item to display or edit. Given is its id,
+         * so its full dto can be addressed and requested by an appropriate service.
+         * This method is usually called by the selector component.
+         * @param itemId unique identifying key
+         */
+        @Override
+        void initItem(Long itemId) {
+            currentDto = taskService.getTaskDetails(itemId)
+            setFieldValues()
+        }
+
+        /**
+         * set all fields from the current full dto object
+         */
+        @Override
+        protected void setFieldValues() {
+            name.value = currentDto.args['name'] ?: ''
+            description.value = currentDto.args['description'] ?: ''
+            state.deselectAll()
+            state.select currentDto.args['state'] ?: ''
+            timeBudget.value = currentDto.args['timeBudget']?.toString() ?: ''
+            timeUsed.value = currentDto.args['timeUsed']?.toString() ?: ''
+            scheduledCompletionDate.value =
+                    currentDto.args['scheduledCompletionDate'] ?: LocalDate.of(0, 0, 0)
+            completionDate.value =
+                    currentDto.args['completionDate'] ?: LocalDate.of(0, 0, 0)
+
+        }
+
+        /**
+         * Save current item after editing to persistent storage, typically by calling an appropriate service.
+         */
+        @Override
+        protected void saveItem() {
+            FullDto command = new FullDto()
+            command.id = currentItemId
+            command.tag = name.value
             def args = command.args
-            args['name'] = dialog.name.value
-            args['description'] = dialog.description.value
-            args['state'] = dialog.state.value
-            args['timeBudget'] = dialog.timeBudget.value
-            args['scheduledCompletionDate'] = dialog.scheduledCompletionDate.value
-            if(newType.get() != 'Project') {
-                command.related['supertask'] = [currentDto]
+            args['name'] = name.value
+            args['description'] = description.value
+            args['state'] = state.value
+            args['timeBudget'] = timeBudget.value
+            args['timeUsed'] = timeUsed.value
+            args['scheduledCompletionDate'] = scheduledCompletionDate.value
+            args['completionDate'] = completionDate.value
+            currentDto = taskService.createOrUpdateTask(command)
+        }
+
+        private FullDto createNewItem() {
+            FullDto command = new FullDto()
+            def newType = dialog.typeSelection.getSelectedItem()
+            if (newType.present) {
+                command.id = new Tuple2<String, Long>(newType.get(), 0)
+                command.tag = dialog.name.value
+                def args = command.args
+                args['name'] = dialog.name.value
+                args['description'] = dialog.description.value
+                args['state'] = dialog.state.value
+                args['timeBudget'] = dialog.timeBudget.value
+                args['scheduledCompletionDate'] = dialog.scheduledCompletionDate.value
+                if (newType.get() != 'Project') {
+                    command.related.supertask = [currentDto]
+                }
+                def newNode = taskService.createOrUpdateTask(command)
+                newNode
             }
-            def newNode = taskService.createOrUpdateTask(command)
-            newNode
+        }
+
+        /**
+         * When editing an item was finished [Save] or cancelled [Cancel], notify the selector component
+         * to enable it and eventually update the items changed caption
+         * @param itemId identifies edited item
+         * @param caption eventually updated caption of the edited item
+         * @param mustReload Component must reload after new item was created
+         *        or (tree-) structure changed
+         */
+        @Override
+        protected void onEditDone(boolean mustReload) {
+            taskTree.onEditItemDone(currentItemId, currentDto?.args?.name?.toString() ?: '', mustReload)
         }
     }
 
@@ -371,10 +377,10 @@ class TaskDetailView extends DetailViewBase
             String keyPrefix = "${subkeyPrefix}dialog."
             winBuilder.keyPrefix = keyPrefix
             window = winBuilder."$C.window"('create Task',
-                    [spacing: true,
-                     margin: true,
-                     width: '30%',
-                     modal  : true,
+                    [spacing : true,
+                     margin  : true,
+                     width   : '30%',
+                     modal   : true,
                      closable: false]) {
                 "$C.vlayout"('top', [spacing: true, margin: true]) {
                     "$F.text"('Task', [uikey: NAME])
@@ -395,11 +401,11 @@ class TaskDetailView extends DetailViewBase
                         "$F.button"('Cancel',
                                 [uikey         : 'cancelbutton',
                                  disableOnClick: true, enabled: true,
-                                 clickListener : { sm.execute(DVEvent.Cancel) }])
+                                 clickListener : { viewBehavior.execute(DVEvent.Cancel) }])
                         "$F.button"('Save',
                                 [uikey         : 'savebutton',
                                  disableOnClick: true, enabled: false,
-                                 clickListener : { sm.execute(DVEvent.Save) }])
+                                 clickListener : { viewBehavior.execute(DVEvent.Save) }])
                     }
                 }
             }

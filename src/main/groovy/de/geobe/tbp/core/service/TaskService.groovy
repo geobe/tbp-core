@@ -69,14 +69,13 @@ class TaskService {
     @Transactional
     FullDto createOrUpdateTask(FullDto command) {
         Task task
-        Task supertask
         if (command.id.second) {
             task = taskRepository.findOne(command.id.second)
         } else {
             task = makeTask(command.id)
             def superId = command.related.supertask?.first()?.id?.second
             if (superId) {
-                supertask = taskRepository.findOne(superId)
+                setSupertask(task, superId)
             }
         }
         task.name = command.args['name']
@@ -92,19 +91,35 @@ class TaskService {
         date = command.args['scheduledCompletionDate']
         task.scheduledCompletionDate = date?.toDate()//LocalDateExtension.toDate(date)
         task = taskRepository.saveAndFlush task
-        if (supertask) {
-            println "Task[${task.class.name}]: ${task.name}(${task.id})"
-            println "Supertask[${supertask.class.name}]: ${supertask.name}(${supertask.id})"
-            if (supertask instanceof Subtask)
-                supertask = supertask.supertask.one
-//            ((CompoundTask) supertask).subtask.add(task)
-            task.supertask.add supertask
-            taskRepository.saveAndFlush(task)
-        }
         makeFullDto(task)
     }
 
-    private TaskNodeDto makeTaskNode(Task task) {
+    /**
+     * Set appropriate supertask for a new task. If id identifies a Subtask, take its supertask.
+     * @param task the new task
+     * @param superId id of supertask candidate
+     */
+    private void setSupertask(Task task, Long superId) {
+        Task supertask = taskRepository.findOne(superId)
+        if (supertask) {
+            if (supertask instanceof Subtask)
+                supertask = supertask.supertask.one
+            task.supertask.add supertask
+        }
+    }
+
+    /**
+     * Polymorfic version of the method for projects. Per definitionem, a Project
+     * has no supertask, so do nothing
+     * @param project ignored
+     * @param superId ignored
+     */
+    private void setSupertask(Project project, Long superId) {
+        // do nothing!
+    }
+
+
+        private TaskNodeDto makeTaskNode(Task task) {
         NodeDto dto = new TaskNodeDto(
                 [id : new Tuple2<String, Serializable>(makeIdKey(task), task.id),
                  tag: task.name])
