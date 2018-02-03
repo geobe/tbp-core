@@ -117,7 +117,7 @@ class TaskDetailView extends SubTree
                 "$F.button"('New',
                         [uikey         : 'newbutton',
                          disableOnClick: true,
-                         clickListener : { viewBehavior.execute(DVEvent.Dialog) }])
+                         clickListener : { viewBehavior.execute(DVEvent.Create) }])
                 "$F.button"('Edit',
                         [uikey         : 'editbutton',
                          disableOnClick: true,
@@ -187,19 +187,21 @@ class TaskDetailView extends SubTree
              scheduledCompletionDate, completionDate,
              saveButton, cancelButton, editButton, newButton].each { it.enabled = false }
         }
-        /** prepare CREATEEMPTY state, not needed now */
+        /** prepare CREATEEMPTY state, using a dialog window */
         @Override
         protected void createemptymode() {
-            createmode()
+            dialog.typeSelection.setSelectedItem('Project')
+            dialog.typeSelection.enabled = false
+            dialog.saveButton.enabled = true
+            prepareDialog()
         }
-        /** prepare CREATE state, not needed now */
+        /** prepare CREATE state, using a dialog window */
         @Override
         protected void createmode() {
-            taskTree.onEditItem()
-            [name, description, completionDate, state, timeBudget, timeUsed,
-             scheduledCompletionDate, saveButton, cancelButton].each { it.enabled = true }
-            [editButton, newButton].each { it.enabled = false }
-//        saveButton.setClickShortcut(ShortcutAction.KeyCode.ENTER)
+            dialog.typeSelection.setSelectedItem(null)
+            dialog.typeSelection.enabled = true
+            dialog.saveButton.enabled = false
+            prepareDialog()
         }
         /** prepare for editing in EDIT state */
         @Override
@@ -228,22 +230,7 @@ class TaskDetailView extends SubTree
              saveButton, cancelButton].each { it.enabled = false }
             [editButton, newButton].each { it.enabled = true }
         }
-        /** prepare for working in DIALOG state */
-        @Override
-        protected void dialogmode() {
-            dialog.typeSelection.setSelectedItem(null)
-            dialog.typeSelection.enabled = true
-            dialog.saveButton.enabled = false
-            prepareDialog()
-        }
-        /** prepare for working in DIALOGEMPTY state */
-        @Override
-        protected void dialogemptymode() {
-            dialog.typeSelection.setSelectedItem('Project')
-            dialog.typeSelection.enabled = false
-            dialog.saveButton.enabled = true
-            prepareDialog()
-        }
+
         /** common functionality for create dialogs */
         private void prepareDialog() {
             taskTree.onEditItem()
@@ -254,8 +241,8 @@ class TaskDetailView extends SubTree
             dialog.saveButton.setClickShortcut(ShortcutAction.KeyCode.ENTER)
             ui.addWindow(dialog.window)
         }
-        /** leaving DIALOG state with save */
-        protected void saveDialog() {
+        /** leaving CREATE or CREATEEMPTY state with save */
+        protected void onCreateSave() {
             currentDto = createNewItem()
             currentItemId = currentDto.id
             setFieldValues()
@@ -263,8 +250,8 @@ class TaskDetailView extends SubTree
             onEditDone(true)
         }
 
-        /** leaving DIALOG state with cancel */
-        protected void cancelDialog() {
+        /** leaving CREATE or CREATEEMPTY state with cancel */
+        protected void onCreateCancel() {
             dialog.window.close()
             onEditDone()
         }
