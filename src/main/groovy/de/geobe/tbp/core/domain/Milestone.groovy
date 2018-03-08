@@ -25,51 +25,43 @@
 package de.geobe.tbp.core.domain
 
 import de.geobe.util.association.IToAny
-import de.geobe.util.association.ToOne
+import de.geobe.util.association.ToMany
 
+import javax.persistence.CascadeType
 import javax.persistence.Entity
-import javax.persistence.JoinColumn
-import javax.persistence.ManyToOne
+import javax.persistence.GeneratedValue
+import javax.persistence.GenerationType
+import javax.persistence.Id
+import javax.persistence.OneToMany
+import javax.persistence.Table
 import javax.persistence.Transient
 
 /**
- * Created by georg beier on 03.01.2018.
+ * Created by georg beier on 08.03.2018.
  */
-@Entity(name = 'TBL_SUBTASK')
-class Subtask extends Task {
+@Entity
+// save entity class into DB
+@Table(name = "TBL_MILESTONES")
+// optionally name the db table
+class Milestone {
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
+    String name
+    MilestoneState state
+    Date dueDate = new Date() + (14 + new Random(System.currentTimeMillis()).nextInt(42))
 
-    Float timeUsed = 7.07
-
-    Subtask() {
-        scheduledCompletionDate = new Date().clearTime()
-    }
-
-    // association to Milestone
-    @ManyToOne  // mark as an association for JPA
-    @JoinColumn(name = 'milestone_id')
-    private Milestone milestone
-    @Transient // don't map to database
-    private ToOne<Subtask, Milestone> toMilestone = new ToOne<>(
-            {this.@milestone},
-            {Milestone m -> this.@milestone = m},
-            this, {Milestone m -> m.subtask}
+    // association to subtasks
+    @OneToMany(mappedBy = 'milestone',
+            cascade = CascadeType.PERSIST)
+    // mark as an association for JPA
+    private List<Subtask> subtasks = new ArrayList<>()
+    @Transient
+    // exclude from database mapping
+    private ToMany<Milestone, Subtask> toSubtasks = new ToMany<>(
+            { this.@subtasks }, this,
+            { Subtask sub -> sub.milestone }
     )
-    IToAny<Milestone> getMilestone() { toMilestone }
 
-    /**
-     * get scheduled completion time
-     */
-//    @Override
-//    Date getScheduledCompletionDate() {
-//        return null
-//    }
-
-    /**
-     * get the time already spent on this task
-     * @return time in working hours
-     */
-//    @Override
-//    Float getTimeUsed() {
-//        return null
-//    }
+    IToAny<Subtask> getSubtask() { toSubtasks }
 }

@@ -57,14 +57,16 @@ class MainUI extends UI {
     private TaskStructureTree taskStructureTree
     @Autowired
     private TaskDetailView taskDetailView
+    @Autowired
+    private MilestoneList milestoneList
 
     // here are all the ui components
-    private Component root, taskSelectTree, taskDetails
+    private Component root, taskSelectTree, taskDetails, milestoneSelectList
 
 
     @Override
     protected void init(VaadinRequest request) {
-        page.title = 'TimeBudgetPlanning V. 0.1'
+        page.title = 'TimeBudgetPlanning V. 0.2'
         content = initBuilder()
         initComponents()
 
@@ -75,11 +77,17 @@ class MainUI extends UI {
         // construct all view building blocks
         taskSelectTree = taskStructureTree.buildSubtree(vaadin, 'tasktree')
         taskDetails = taskDetailView.buildSubtree(vaadin, 'taskdetail')
+        milestoneSelectList = milestoneList.buildSubtree(vaadin, 'milestones')
 
         // build the top level view, i.e. the root of the vaadin component tree
-        root = vaadin."$C.hsplit"([uikey: 'topsplit', splitPosition: 40.0f]) {
-            "$F.subtree"(taskSelectTree, [uikey: 'tasktree'])
-            "$F.subtree"(taskDetails, [uikey: 'taskpanel', caption: 'Task Editor'])
+        root = vaadin."$C.tabsheet"([uikey: 'tabs']) {
+            "$C.hsplit"([uikey: 'tasksplit', splitPosition: 40.0f, caption: 'Tasks']) {
+                "$F.subtree"(taskSelectTree, [uikey: 'tasktree'])
+                "$F.subtree"(taskDetails, [uikey: 'taskpanel', caption: 'Task Editor'])
+            }
+            "$C.hsplit"([uikey: 'milesplit', splitPosition: 40.0f, caption: 'Milestones']) {
+                "$F.subtree"(milestoneSelectList, [uikey: 'mistlist'])
+            }
         }
 
     }

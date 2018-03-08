@@ -25,8 +25,11 @@
 package de.geobe.tbp.core.service
 
 import de.geobe.tbp.core.domain.CompoundTask
+import de.geobe.tbp.core.domain.Milestone
+import de.geobe.tbp.core.domain.MilestoneState
 import de.geobe.tbp.core.domain.Project
 import de.geobe.tbp.core.domain.Subtask
+import de.geobe.tbp.core.repository.MilestoneRepository
 import de.geobe.tbp.core.repository.TaskRepository
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
@@ -34,6 +37,7 @@ import org.springframework.context.ApplicationListener
 import org.springframework.context.event.ContextRefreshedEvent
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 import java.time.LocalDateTime
 
@@ -47,8 +51,10 @@ class StartupService implements IStartupService {
 
     @Autowired
     private TaskRepository taskRepository
+    @Autowired MilestoneRepository milestoneRepository
 
     @Override
+    @Transactional
     void initApplicationData() {
         if (!taskRepository.findAll()) {
             log.info("initializing data at ${LocalDateTime.now()}")
@@ -81,6 +87,26 @@ class StartupService implements IStartupService {
             exmon.subtask.add(ex1)
             ex2.supertask.add exmon
             exmic.subtask.add([ex3, ex4, ex5])
+            def mist1 = new Milestone(
+                    [name   : 'Slides Available',
+                     state  : MilestoneState.OPEN,
+                     dueDate: new Date() + 14])
+            def mist2 = new Milestone(
+                    [name   : 'Monolothic Examples Done',
+                     state  : MilestoneState.COMPLETED,
+                     dueDate: new Date() - 10])
+            def mist3 = new Milestone(
+                    [name   : 'Microservice Examples Done',
+                     state  : MilestoneState.OPEN,
+                     dueDate: new Date() + 120])
+            mist1.subtask.add([sl1, sl2, sl3])
+            mist2.subtask.add([ex1, ex2])
+            ex3.milestone.add(mist3)
+            ex4.milestone.add(mist3)
+            ex5.milestone.add(mist3)
+            milestoneRepository.save(mist1)
+            milestoneRepository.save(mist2)
+            milestoneRepository.save(mist3)
             taskRepository.saveAndFlush(proj)
         }
     }
@@ -92,7 +118,7 @@ class StartupService implements IStartupService {
 }
 
 /**
- * Let Spring Boot run the StartupService on any ContextRefreshed event, i.e at startup
+ * Let Spring Boot run the StartupService on any ContextRefreshed event, i.e. at startup
  */
 @Component
 class ContextRefreshedListener implements ApplicationListener<ContextRefreshedEvent> {
