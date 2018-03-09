@@ -39,10 +39,10 @@ import javax.persistence.Transient
 /**
  * Created by georg beier on 08.03.2018.
  */
-@Entity
 // save entity class into DB
-@Table(name = "TBL_MILESTONES")
+@Entity
 // optionally name the db table
+@Table(name = "TBL_MILESTONES")
 class Milestone {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)

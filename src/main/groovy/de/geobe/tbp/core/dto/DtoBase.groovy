@@ -27,37 +27,39 @@ package de.geobe.tbp.core.dto
 import de.geobe.util.vaadin.helper.IdProvider
 
 /**
- * A Query Data Transfer Object that holds a list of NodeDtos to display in ListViews or similar
+ * A Query Data Transfer Object to display in ListViews or similar.
+ * It holds an identifying display string (for humans)
+ * and the key of the underlying domain object
+ *
  * Created by georg beier on 09.01.2018.
  *
  */
-class ListDto {
-    LinkedHashMap<Tuple2<String, Long>, NodeDto> all = [:]
+class ListItemDto implements IdProvider<Tuple2<String, Serializable>> {
+    Tuple2<String, Long> id = new Tuple2<String, Long>('', 0)
+    String tag
 
-    Tuple2<String, Long> getFirstId() {
-        if (all) {
-            all.keySet().iterator().next()
-        } else {
-            [:]
-        }
+    @Override
+    String toString() {
+        "${this.tag}"
     }
+
+    def getType() {id.first}
 }
 
 /**
- * A Query Data Transfer Object that holds an identifying display string (for humans)
- * and the key of the underlying domain object and a map with lists of QNodes of all
+ * A Query Data Transfer Object that in addition to its parent class
+ * also holds a map with lists of QNodes of all
  * kinds of related objects to display associations
- * @param <K>
  */
-class NodeDto implements IdProvider<Tuple2<String, Serializable>> {
-    Tuple2<String, Long> id = new Tuple2<String, Long>('', 0)
-    String tag
+class NodeDto extends ListItemDto {
+//    Tuple2<String, Long> id = new Tuple2<String, Long>('', 0)
+//    String tag
     Map<String, List<NodeDto>> related = [:]
 
     @Override
     String toString() {
         def c = id.first.toString()?.charAt(0)
-        "$c: ${this.@tag}"
+        "$c: $tag"
     }
 
     def getType() {id.first}

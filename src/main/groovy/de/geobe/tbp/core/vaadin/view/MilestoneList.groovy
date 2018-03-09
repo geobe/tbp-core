@@ -29,7 +29,7 @@ import com.vaadin.spring.annotation.SpringComponent
 import com.vaadin.spring.annotation.UIScope
 import com.vaadin.ui.Component
 import com.vaadin.ui.ListSelect
-import de.geobe.tbp.core.dto.ListDto
+import de.geobe.tbp.core.dto.ListItemDto
 import de.geobe.util.vaadin.builder.SubTree
 import de.geobe.util.vaadin.type.DetailSelector
 
@@ -49,7 +49,7 @@ class MilestoneList extends SubTree
 
     final static String MILESTONELIST = 'milestonelist'
 
-    private ListSelect<ListDto> mistList
+    private ListSelect<ListItemDto> mistList
 
     @Override
     Component build() {
