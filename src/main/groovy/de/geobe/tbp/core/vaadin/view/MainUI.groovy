@@ -45,7 +45,7 @@ import static VaadinBuilder.F
 
  * Created by georg beier on 18.01.2018.
  */
-@SpringUI(path = '/tasktree')
+@SpringUI(path = '/main')
 @Theme("valo")
 class MainUI extends UI {
 
