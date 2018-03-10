@@ -71,14 +71,14 @@ class TaskDetailView extends SubTree
     public static final String TIME_BUDGET_USED = 'timeBudgetUsed'
     public static final String COMPLETION_DATE_PLAN = 'completionDatePlan'
     public static final String COMPLETION_DATE_DONE = 'completionDateDone'
-    public static final String MILESTONE = 'milestone'
+    public static final String MILESTONE = 'milestoneSelect'
 
     /** variables bound to the generated vaadin elements make programming easier */
     private TextField name, timeBudget, timeUsed
     private TextArea description
     private ListSelect<String> state
     private DateField scheduledCompletionDate, completionDate
-    private ListSelect<ListItemDto> milestone
+    private ListSelect<ListItemDto> milestoneSelect
     private Button newButton, editButton, saveButton, cancelButton
 
     /** item id of currently displaed item */
@@ -163,7 +163,7 @@ class TaskDetailView extends SubTree
         timeUsed = uiComponents."$subkeyPrefix$TIME_BUDGET_USED"
         scheduledCompletionDate = uiComponents."$subkeyPrefix$COMPLETION_DATE_PLAN"
         completionDate = uiComponents."$subkeyPrefix$COMPLETION_DATE_DONE"
-        milestone = uiComponents."$subkeyPrefix$MILESTONE"
+        milestoneSelect = uiComponents."$subkeyPrefix$MILESTONE"
         newButton = uiComponents."${subkeyPrefix}newbutton"
         editButton = uiComponents."${subkeyPrefix}editbutton"
         saveButton = uiComponents."${subkeyPrefix}savebutton"
@@ -200,7 +200,7 @@ class TaskDetailView extends SubTree
         @Override
         protected void initmode() {
             [name, description, completionDate, state, timeBudget, timeUsed,
-             scheduledCompletionDate, completionDate, milestone,
+             scheduledCompletionDate, completionDate, milestoneSelect,
              saveButton, cancelButton, editButton, newButton].each { it.enabled = false }
         }
         /** prepare CREATEEMPTY state, using a dialog window */
@@ -230,7 +230,7 @@ class TaskDetailView extends SubTree
             taskTree.onEditItem()
             if (currentDto.id.first == 'Subtask')
                 [timeUsed, completionDate].each { it.enabled = true }
-            [name, description, state, timeBudget, scheduledCompletionDate,
+            [name, description, state, timeBudget, scheduledCompletionDate, milestoneSelect,
              saveButton, cancelButton].each { it.enabled = true }
             [editButton, newButton].each { it.enabled = false }
             saveButton.setClickShortcut(ShortcutAction.KeyCode.ENTER)
@@ -248,7 +248,7 @@ class TaskDetailView extends SubTree
         @Override
         protected void showmode() {
             [name, description, state, timeBudget, timeUsed,
-             completionDate, scheduledCompletionDate, milestone,
+             completionDate, scheduledCompletionDate, milestoneSelect,
              saveButton, cancelButton].each { it.enabled = false }
             [editButton, newButton].each { it.enabled = true }
         }
@@ -311,21 +311,21 @@ class TaskDetailView extends SubTree
             state.select currentDto.args['state'] ?: ''
             timeBudget.value = currentDto.args['timeBudget']?.toString() ?: ''
             timeUsed.value = currentDto.args['timeUsed']?.toString() ?: ''
-            milestone.deselectAll()
+            milestoneSelect.deselectAll()
             if (currentDto.related.projectmilestones || currentDto.related.unassignedmilestones) {
                 def mists = (currentDto.related.projectmilestones ?: []) + currentDto.related.unassignedmilestones ?: []
                 def listData = new ListDataProvider<ListItemDto>(mists)
                 listData.sortComparator = { ListItemDto t1, ListItemDto t2 ->
                     t1.tag.compareTo(t2.tag)
                 }
-                milestone.dataProvider = listData
+                milestoneSelect.dataProvider = listData
                 List<ListItemDto> relatedMist = currentDto.related.milestone
                 if (relatedMist) {
                     def toSelect = mists.find { it.id.second == relatedMist[0].id.second }
-                    milestone.select(toSelect)
+                    milestoneSelect.select(toSelect)
                 }
             } else {
-                milestone.dataProvider = new ListDataProvider<ListItemDto>([])
+                milestoneSelect.dataProvider = new ListDataProvider<ListItemDto>([])
             }
             scheduledCompletionDate.value =
                     currentDto.args['scheduledCompletionDate'] ?: LocalDate.of(0, 0, 0)
@@ -350,6 +350,11 @@ class TaskDetailView extends SubTree
             args['timeUsed'] = timeUsed.value
             args['scheduledCompletionDate'] = scheduledCompletionDate.value
             args['completionDate'] = completionDate.value
+            if (currentItemId.first == 'Subtask') {
+                def mist = milestoneSelect.selectedItems.find()
+                command.related.milestone = mist ? [mist] : []
+            }
+
             currentDto = taskService.createOrUpdateTask(command)
         }
 
@@ -367,6 +372,10 @@ class TaskDetailView extends SubTree
                 args['scheduledCompletionDate'] = dialog.scheduledCompletionDate.value
                 if (newType.get() != 'Project') {
                     command.related.supertask = [currentDto]
+                }
+                if (newType.get() == 'Subtask') {
+                    def mist = dialog.milestone.selectedItems.find()
+                    command.related.milestone = mist ? [mist] : []
                 }
                 def newNode = taskService.createOrUpdateTask(command)
                 newNode

@@ -81,7 +81,9 @@ class TaskService {
     @Transactional(readOnly = true)
     List<ListItemDto> getMilestonesInProject(Serializable id) {
         Task task = taskRepository.findOne(id)
-        getMilestones(task)
+        def used = getMilestones(task)
+        def free = unassignedMilestones
+        used + free
     }
 
     @Transactional
@@ -94,6 +96,13 @@ class TaskService {
             def superId = command.related.supertask?.first()?.id?.second
             if (superId) {
                 setSupertask(task, superId)
+            }
+        }
+        if (task instanceof Subtask) {
+            def mistId = command.related.milestone?.first()?.id.second
+            if (mistId) {
+                Milestone mist = milestoneRepository.findOne(mistId)
+                task.milestone.add(mist)
             }
         }
         task.name = command.args['name']
@@ -204,7 +213,7 @@ class TaskService {
     }
 
     private List<ListItemDto> getAssignedMilestones(Subtask task) {
-        if(task.milestone.one)
+        if (task.milestone.one)
             [makeMilestoneItem(task.milestone.one)]
         else
             []
@@ -213,14 +222,12 @@ class TaskService {
     private List<ListItemDto> getMilestones(Task task) {
         Task top = getTopTask(task)
         def milestones = getAllSubtasks(top).collect { it.milestone.one }.grep() toSet()
-        def used = milestones?.collect { makeMilestoneItem(it)} ?: []
-        def free = unassignedMilestones
-        used + free
+        milestones?.collect { makeMilestoneItem(it) } ?: []
     }
 
     private List<ListItemDto> getUnassignedMilestones() {
         def milestones = milestoneRepository.findAllBySubtasksIsNull()
-        milestones.collect { makeMilestoneItem(it)}
+        milestones.collect { makeMilestoneItem(it) }
     }
 
     public TaskNodeDto makeTaskNode(Task task) {
@@ -245,8 +252,8 @@ class TaskService {
         def subs = []
         if (t instanceof Subtask) {
             subs << t
-        } else if(t instanceof CompoundTask) {
-            subs = t.subtask.all.collect {getAllSubtasks(it)} flatten()
+        } else if (t instanceof CompoundTask) {
+            subs = t.subtask.all.collect { getAllSubtasks(it) } flatten()
         }
         subs
     }
