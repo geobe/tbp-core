@@ -136,20 +136,6 @@ class TaskService {
         // do nothing!
     }
 
-
-    public TaskNodeDto makeTaskNode(Task task) {
-        NodeDto dto = new TaskNodeDto(
-                [id : new Tuple2<String, Serializable>(makeIdKey(task), task.id),
-                 tag: task.name])
-        dto
-    }
-
-    private makeIdKey(def persistentObject) {
-        def cln = persistentObject.class.name
-        def key = cln.replaceFirst(/.*\./, '')
-        key
-    }
-
     private TaskNodeDto makeTaskSubTree(CompoundTask task) {
         def dto = makeTaskNode(task)
         if (task.subtask) {
@@ -191,8 +177,8 @@ class TaskService {
             if (task instanceof CompoundTask) {
                 dto.related.subtask = task?.subtask.all.collect { makeTaskNode(it) } ?: []
             } else if (task instanceof Subtask) {
-                dto.related.milestone = task?.milestone.all ?: []
-                dto.related.projectmilestones = getMilestones(task) ?: []
+                dto.related.milestone = getAssignedMilestones(task)
+                dto.related.projectmilestones = getMilestones(task)
                 dto.related.unassignedmilestones = getUnassignedMilestones()
             }
         }
@@ -217,23 +203,40 @@ class TaskService {
         task
     }
 
+    private List<ListItemDto> getAssignedMilestones(Subtask task) {
+        if(task.milestone.one)
+            [makeMilestoneItem(task.milestone.one)]
+        else
+            []
+    }
+
     private List<ListItemDto> getMilestones(Task task) {
         Task top = getTopTask(task)
         def milestones = getAllSubtasks(top).collect { it.milestone.one }.grep() toSet()
-        def m = milestones.collect { Milestone mist ->
-            new ListItemDto([id : new Tuple2<String, Long>(makeIdKey(mist), mist.id),
-                             tag: mist.name])
-        }
-        m
+        milestones?.collect { makeMilestoneItem(it)} ?: []
     }
 
     private List<ListItemDto> getUnassignedMilestones() {
         def milestones = milestoneRepository.findAllBySubtasksIsNull()
-        def m = milestones.collect { Milestone mist ->
-            new ListItemDto([id : new Tuple2<String, Long>(makeIdKey(mist), mist.id),
-                             tag: mist.name])
-        }
-        m
+        milestones.collect { makeMilestoneItem(it)}
+    }
+
+    public TaskNodeDto makeTaskNode(Task task) {
+        NodeDto dto = new TaskNodeDto(
+                [id : new Tuple2<String, Serializable>(makeIdKey(task), task.id),
+                 tag: task.name])
+        dto
+    }
+
+    public makeMilestoneItem(Milestone mist) {
+        new ListItemDto([id : new Tuple2<String, Long>(makeIdKey(mist), mist.id),
+                         tag: mist.name])
+    }
+
+    private makeIdKey(def persistentObject) {
+        def cln = persistentObject.class.name
+        def key = cln.replaceFirst(/.*\./, '')
+        key
     }
 
     private List<Subtask> getAllSubtasks(Task t) {

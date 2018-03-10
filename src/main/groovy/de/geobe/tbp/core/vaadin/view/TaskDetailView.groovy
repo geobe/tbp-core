@@ -24,6 +24,7 @@
 
 package de.geobe.tbp.core.vaadin.view
 
+import com.vaadin.data.provider.ListDataProvider
 import com.vaadin.event.ShortcutAction
 import com.vaadin.spring.annotation.SpringComponent
 import com.vaadin.spring.annotation.UIScope
@@ -199,7 +200,7 @@ class TaskDetailView extends SubTree
         @Override
         protected void initmode() {
             [name, description, completionDate, state, timeBudget, timeUsed,
-             scheduledCompletionDate, completionDate,
+             scheduledCompletionDate, completionDate, milestone,
              saveButton, cancelButton, editButton, newButton].each { it.enabled = false }
         }
         /** prepare CREATEEMPTY state, using a dialog window */
@@ -241,7 +242,8 @@ class TaskDetailView extends SubTree
         /** prepare SHOW state */
         @Override
         protected void showmode() {
-            [name, description, state, timeBudget, timeUsed, completionDate, scheduledCompletionDate,
+            [name, description, state, timeBudget, timeUsed,
+             completionDate, scheduledCompletionDate, milestone,
              saveButton, cancelButton].each { it.enabled = false }
             [editButton, newButton].each { it.enabled = true }
         }
@@ -302,6 +304,22 @@ class TaskDetailView extends SubTree
             state.select currentDto.args['state'] ?: ''
             timeBudget.value = currentDto.args['timeBudget']?.toString() ?: ''
             timeUsed.value = currentDto.args['timeUsed']?.toString() ?: ''
+            milestone.deselectAll()
+            if(currentDto.related.projectmilestones || currentDto.related.unassignedmilestones) {
+                def mists = (currentDto.related.projectmilestones ?: []) + currentDto.related.unassignedmilestones ?: []
+                def listData = new ListDataProvider<ListItemDto>(mists)
+                listData.sortComparator = {ListItemDto t1, ListItemDto t2 ->
+                    t1.tag.compareTo(t2.tag)
+                }
+                milestone.dataProvider = listData
+                List<ListItemDto> relatedMist = currentDto.related.milestone
+                if (relatedMist) {
+                    def toSelect = mists.find {it.id.second == relatedMist[0].id.second}
+                    milestone.select(toSelect)
+                }
+            } else {
+                milestone.dataProvider = new ListDataProvider<ListItemDto>([])
+            }
             scheduledCompletionDate.value =
                     currentDto.args['scheduledCompletionDate'] ?: LocalDate.of(0, 0, 0)
             completionDate.value =
