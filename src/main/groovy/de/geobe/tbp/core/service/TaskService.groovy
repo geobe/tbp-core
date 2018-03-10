@@ -213,7 +213,9 @@ class TaskService {
     private List<ListItemDto> getMilestones(Task task) {
         Task top = getTopTask(task)
         def milestones = getAllSubtasks(top).collect { it.milestone.one }.grep() toSet()
-        milestones?.collect { makeMilestoneItem(it)} ?: []
+        def used = milestones?.collect { makeMilestoneItem(it)} ?: []
+        def free = unassignedMilestones
+        used + free
     }
 
     private List<ListItemDto> getUnassignedMilestones() {

@@ -217,6 +217,11 @@ class TaskDetailView extends SubTree
             dialog.typeSelection.setSelectedItem(null)
             dialog.typeSelection.enabled = true
             dialog.saveButton.enabled = false
+            def mistlist = taskService.getMilestonesInProject(currentItemId.second)
+            dialog.milestones = new ListDataProvider<ListItemDto>(mistlist)
+            dialog.milestones.sortComparator = { ListItemDto t1, ListItemDto t2 ->
+                t1.tag.compareTo(t2.tag)
+            }
             prepareDialog()
         }
         /** prepare for editing in EDIT state */
@@ -254,6 +259,8 @@ class TaskDetailView extends SubTree
             [dialog.name, dialog.timeBudget, dialog.description,
              dialog.scheduledCompletionDate].each { it.clear() }
             dialog.state.deselectAll()
+            dialog.milestone.dataProvider = dialog.empty
+            dialog.milestone.enabled = false
             dialog.cancelButton.enabled = true
             dialog.saveButton.setClickShortcut(ShortcutAction.KeyCode.ENTER)
             ui.addWindow(dialog.window)
@@ -305,16 +312,16 @@ class TaskDetailView extends SubTree
             timeBudget.value = currentDto.args['timeBudget']?.toString() ?: ''
             timeUsed.value = currentDto.args['timeUsed']?.toString() ?: ''
             milestone.deselectAll()
-            if(currentDto.related.projectmilestones || currentDto.related.unassignedmilestones) {
+            if (currentDto.related.projectmilestones || currentDto.related.unassignedmilestones) {
                 def mists = (currentDto.related.projectmilestones ?: []) + currentDto.related.unassignedmilestones ?: []
                 def listData = new ListDataProvider<ListItemDto>(mists)
-                listData.sortComparator = {ListItemDto t1, ListItemDto t2 ->
+                listData.sortComparator = { ListItemDto t1, ListItemDto t2 ->
                     t1.tag.compareTo(t2.tag)
                 }
                 milestone.dataProvider = listData
                 List<ListItemDto> relatedMist = currentDto.related.milestone
                 if (relatedMist) {
-                    def toSelect = mists.find {it.id.second == relatedMist[0].id.second}
+                    def toSelect = mists.find { it.id.second == relatedMist[0].id.second }
                     milestone.select(toSelect)
                 }
             } else {
@@ -387,6 +394,7 @@ class TaskDetailView extends SubTree
         ListSelect<String> state
         RadioButtonGroup<String> typeSelection
         DateField scheduledCompletionDate
+        ListDataProvider<ListItemDto> milestones, empty = new ListDataProvider<>([])
         private ListSelect<ListItemDto> milestone
 
         Button saveButton, cancelButton
@@ -400,24 +408,33 @@ class TaskDetailView extends SubTree
             window = winBuilder."$C.window"('create Task',
                     [spacing : true,
                      margin  : true,
-                     width   : '30%',
+                     width   : '50%',
                      modal   : true,
                      closable: false]) {
                 "$C.vlayout"('top', [spacing: true, margin: true]) {
                     "$F.text"('Task', [uikey: NAME])
-                    "$F.radiobuttongroup"('Type', [uikey            : TYPE,
-                                                   items            : ['Project',
-                                                                       'CompoundTask',
-                                                                       'Subtask'],
-                                                   selectionListener: {
-                                                       saveButton.enabled = true
-                                                   }])
                     "$F.textarea"('Description', [uikey: DESCRIPTION])
-                    "$F.list"('State', [uikey: STATE,
-                                        items: STATES,
-                                        rows : STATES.size()])
-                    "$F.text"('Assigned Time Budget', [uikey: TIME_BUDGET_PLAN])
-                    "$F.date"('Scheduled Completion', [uikey: COMPLETION_DATE_PLAN])
+                    "$C.hlayout"([uikey       : 'schedules',
+                                  spacing     : true,
+                                  gridPosition: [0, 1, 1, 1]]) {
+                        "$F.radiobuttongroup"('Type',
+                                [uikey            : TYPE,
+                                 items            : ['Project',
+                                                     'CompoundTask',
+                                                     'Subtask'],
+                                 selectionListener: {
+                                     typeSelectionListener()
+                                 }])
+                        "$F.list"('State', [uikey: STATE,
+                                            items: STATES,
+                                            rows : STATES.size()])
+                    }
+                    "$C.hlayout"([uikey       : 'schedules',
+                                  spacing     : true,
+                                  gridPosition: [0, 1, 1, 1]]) {
+                        "$F.text"('Assigned Time Budget', [uikey: TIME_BUDGET_PLAN])
+                        "$F.date"('Scheduled Completion', [uikey: COMPLETION_DATE_PLAN])
+                    }
                     "$F.list"('Milestone', [uikey: MILESTONE,
                                             rows : 5,
                                             width: '80%'])
@@ -446,6 +463,18 @@ class TaskDetailView extends SubTree
             cancelButton = dialogComponents."${keyPrefix}cancelbutton"
             window.center()
             window
+        }
+
+        def typeSelectionListener() {
+            saveButton.enabled = true
+            def type = typeSelection.selectedItem.get()
+            if (type == 'Subtask') {
+                milestone.dataProvider = milestones ?: empty
+                milestone.enabled = true
+            } else {
+                milestone.dataProvider = empty
+                milestone.enabled = false
+            }
         }
     }
 
