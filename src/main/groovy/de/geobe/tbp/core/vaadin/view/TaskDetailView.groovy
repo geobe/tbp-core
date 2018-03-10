@@ -31,6 +31,7 @@ import com.vaadin.ui.*
 import com.vaadin.ui.themes.ValoTheme
 import de.geobe.tbp.core.domain.TaskState
 import de.geobe.tbp.core.dto.FullDto
+import de.geobe.tbp.core.dto.ListItemDto
 import de.geobe.tbp.core.dto.NodeDto
 import de.geobe.tbp.core.service.TaskService
 import de.geobe.util.statemachine.samples.DVEvent
@@ -76,6 +77,7 @@ class TaskDetailView extends SubTree
     private TextArea description
     private ListSelect<String> state
     private DateField scheduledCompletionDate, completionDate
+    private ListSelect<ListItemDto> milestone
     private Button newButton, editButton, saveButton, cancelButton
 
     /** item id of currently displaed item */
@@ -160,6 +162,7 @@ class TaskDetailView extends SubTree
         timeUsed = uiComponents."$subkeyPrefix$TIME_BUDGET_USED"
         scheduledCompletionDate = uiComponents."$subkeyPrefix$COMPLETION_DATE_PLAN"
         completionDate = uiComponents."$subkeyPrefix$COMPLETION_DATE_DONE"
+        milestone = uiComponents."$subkeyPrefix$MILESTONE"
         newButton = uiComponents."${subkeyPrefix}newbutton"
         editButton = uiComponents."${subkeyPrefix}editbutton"
         saveButton = uiComponents."${subkeyPrefix}savebutton"
@@ -366,6 +369,7 @@ class TaskDetailView extends SubTree
         ListSelect<String> state
         RadioButtonGroup<String> typeSelection
         DateField scheduledCompletionDate
+        private ListSelect<ListItemDto> milestone
 
         Button saveButton, cancelButton
         Window window
@@ -418,6 +422,7 @@ class TaskDetailView extends SubTree
             timeBudget = dialogComponents."$keyPrefix$TIME_BUDGET_PLAN"
             state = dialogComponents."$keyPrefix$STATE"
             scheduledCompletionDate = dialogComponents."$keyPrefix$COMPLETION_DATE_PLAN"
+            milestone = dialogComponents."$keyPrefix$MILESTONE"
             typeSelection = dialogComponents."$keyPrefix$TYPE"
             saveButton = dialogComponents."${keyPrefix}savebutton"
             cancelButton = dialogComponents."${keyPrefix}cancelbutton"
