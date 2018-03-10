@@ -34,4 +34,5 @@ import java.util.List;
  */
 public interface MilestoneRepository extends JpaRepository<Milestone, Long> {
     List<Milestone> findAllByOrderByNameAsc();
+    List<Milestone> findAllBySubtasksIsNull();
 }

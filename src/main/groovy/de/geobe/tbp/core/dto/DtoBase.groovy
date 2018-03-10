@@ -68,12 +68,12 @@ class NodeDto extends ListItemDto {
 /**
  * A Data Transfer Object for Query and Command operations that holds the key of the
  * underlying domain object, its typename, a map with all its attribute names and values and a map
- * with lists of QNodes of all related objects to display associations
+ * with lists of ListItems of all related objects to display associations
  */
 class FullDto {
     Tuple2<String, Long> id = new Tuple2<String, Long>('', 0)
     String tag
     LinkedHashMap<String, Object> args = [:]
-    Map<String, List<NodeDto>> related = [:]
+    Map<String, List<ListItemDto>> related = [:]
 }
 
