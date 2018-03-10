@@ -69,6 +69,7 @@ class TaskDetailView extends SubTree
     public static final String TIME_BUDGET_USED = 'timeBudgetUsed'
     public static final String COMPLETION_DATE_PLAN = 'completionDatePlan'
     public static final String COMPLETION_DATE_DONE = 'completionDateDone'
+    public static final String MILESTONE = 'milestone'
 
     /** variables bound to the generated vaadin elements make programming easier */
     private TextField name, timeBudget, timeUsed
@@ -106,12 +107,23 @@ class TaskDetailView extends SubTree
             "$F.list"('State', [uikey: STATE,
                                 items: STATES,
                                 rows : STATES.size()])
-            "$F.text"('Assigned Time Budget', [uikey: TIME_BUDGET_PLAN])
-            "$F.text"('Used Time Budget', [uikey  : TIME_BUDGET_USED,
-                                           enabled: false])
-            "$F.date"('Scheduled Completion', [uikey: COMPLETION_DATE_PLAN])
-            "$F.date"('Completion achieved', [uikey  : COMPLETION_DATE_DONE,
-                                              enabled: false])
+            "$C.hlayout"([uikey       : 'timebudgets',
+                          spacing     : true,
+                          gridPosition: [0, 1, 1, 1]]) {
+                "$F.text"('Assigned Time Budget', [uikey: TIME_BUDGET_PLAN])
+                "$F.text"('Used Time Budget', [uikey  : TIME_BUDGET_USED,
+                                               enabled: false])
+            }
+            "$C.hlayout"([uikey       : 'schedules',
+                          spacing     : true,
+                          gridPosition: [0, 1, 1, 1]]) {
+                "$F.date"('Scheduled Completion', [uikey: COMPLETION_DATE_PLAN])
+                "$F.date"('Completion achieved', [uikey  : COMPLETION_DATE_DONE,
+                                                  enabled: false])
+            }
+            "$F.list"('Milestone', [uikey: MILESTONE,
+                                    rows : 5,
+                                    width: '80%'])
             "$C.hlayout"([uikey       : 'buttonfield', spacing: true,
                           gridPosition: [0, 3, 1, 3]]) {
                 "$F.button"('New',
@@ -384,6 +396,9 @@ class TaskDetailView extends SubTree
                                         rows : STATES.size()])
                     "$F.text"('Assigned Time Budget', [uikey: TIME_BUDGET_PLAN])
                     "$F.date"('Scheduled Completion', [uikey: COMPLETION_DATE_PLAN])
+                    "$F.list"('Milestone', [uikey: MILESTONE,
+                                            rows : 5,
+                                            width: '80%'])
                     "$C.hlayout"([uikey: 'buttonfield', spacing: true]) {
                         "$F.button"('Cancel',
                                 [uikey         : 'cancelbutton',
