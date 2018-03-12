@@ -24,6 +24,7 @@
 
 package de.geobe.tbp.core.vaadin.view
 
+import com.vaadin.data.provider.ListDataProvider
 import com.vaadin.event.ShortcutAction
 import com.vaadin.spring.annotation.SpringComponent
 import com.vaadin.spring.annotation.UIScope
@@ -31,6 +32,7 @@ import com.vaadin.ui.*
 import com.vaadin.ui.themes.ValoTheme
 import de.geobe.tbp.core.domain.TaskState
 import de.geobe.tbp.core.dto.FullDto
+import de.geobe.tbp.core.dto.ListItemDto
 import de.geobe.tbp.core.dto.NodeDto
 import de.geobe.tbp.core.service.TaskService
 import de.geobe.util.statemachine.samples.DVEvent
@@ -69,12 +71,14 @@ class TaskDetailView extends SubTree
     public static final String TIME_BUDGET_USED = 'timeBudgetUsed'
     public static final String COMPLETION_DATE_PLAN = 'completionDatePlan'
     public static final String COMPLETION_DATE_DONE = 'completionDateDone'
+    public static final String MILESTONE = 'milestoneSelect'
 
     /** variables bound to the generated vaadin elements make programming easier */
     private TextField name, timeBudget, timeUsed
     private TextArea description
     private ListSelect<String> state
     private DateField scheduledCompletionDate, completionDate
+    private ListSelect<ListItemDto> milestoneSelect
     private Button newButton, editButton, saveButton, cancelButton
 
     /** item id of currently displaed item */
@@ -106,12 +110,23 @@ class TaskDetailView extends SubTree
             "$F.list"('State', [uikey: STATE,
                                 items: STATES,
                                 rows : STATES.size()])
-            "$F.text"('Assigned Time Budget', [uikey: TIME_BUDGET_PLAN])
-            "$F.text"('Used Time Budget', [uikey  : TIME_BUDGET_USED,
-                                           enabled: false])
-            "$F.date"('Scheduled Completion', [uikey: COMPLETION_DATE_PLAN])
-            "$F.date"('Completion achieved', [uikey  : COMPLETION_DATE_DONE,
-                                              enabled: false])
+            "$C.hlayout"([uikey       : 'timebudgets',
+                          spacing     : true,
+                          gridPosition: [0, 1, 1, 1]]) {
+                "$F.text"('Assigned Time Budget', [uikey: TIME_BUDGET_PLAN])
+                "$F.text"('Used Time Budget', [uikey  : TIME_BUDGET_USED,
+                                               enabled: false])
+            }
+            "$C.hlayout"([uikey       : 'schedules',
+                          spacing     : true,
+                          gridPosition: [0, 1, 1, 1]]) {
+                "$F.date"('Scheduled Completion', [uikey: COMPLETION_DATE_PLAN])
+                "$F.date"('Completion achieved', [uikey  : COMPLETION_DATE_DONE,
+                                                  enabled: false])
+            }
+            "$F.list"('Milestone', [uikey: MILESTONE,
+                                    rows : 5,
+                                    width: '80%'])
             "$C.hlayout"([uikey       : 'buttonfield', spacing: true,
                           gridPosition: [0, 3, 1, 3]]) {
                 "$F.button"('New',
@@ -148,6 +163,7 @@ class TaskDetailView extends SubTree
         timeUsed = uiComponents."$subkeyPrefix$TIME_BUDGET_USED"
         scheduledCompletionDate = uiComponents."$subkeyPrefix$COMPLETION_DATE_PLAN"
         completionDate = uiComponents."$subkeyPrefix$COMPLETION_DATE_DONE"
+        milestoneSelect = uiComponents."$subkeyPrefix$MILESTONE"
         newButton = uiComponents."${subkeyPrefix}newbutton"
         editButton = uiComponents."${subkeyPrefix}editbutton"
         saveButton = uiComponents."${subkeyPrefix}savebutton"
@@ -184,7 +200,7 @@ class TaskDetailView extends SubTree
         @Override
         protected void initmode() {
             [name, description, completionDate, state, timeBudget, timeUsed,
-             scheduledCompletionDate, completionDate,
+             scheduledCompletionDate, completionDate, milestoneSelect,
              saveButton, cancelButton, editButton, newButton].each { it.enabled = false }
         }
         /** prepare CREATEEMPTY state, using a dialog window */
@@ -201,6 +217,11 @@ class TaskDetailView extends SubTree
             dialog.typeSelection.setSelectedItem(null)
             dialog.typeSelection.enabled = true
             dialog.saveButton.enabled = false
+            def mistlist = taskService.getMilestonesInProject(currentItemId.second)
+            dialog.milestones = new ListDataProvider<ListItemDto>(mistlist)
+            dialog.milestones.sortComparator = { ListItemDto t1, ListItemDto t2 ->
+                t1.tag.compareTo(t2.tag)
+            }
             prepareDialog()
         }
         /** prepare for editing in EDIT state */
@@ -209,7 +230,7 @@ class TaskDetailView extends SubTree
             taskTree.onEditItem()
             if (currentDto.id.first == 'Subtask')
                 [timeUsed, completionDate].each { it.enabled = true }
-            [name, description, state, timeBudget, scheduledCompletionDate,
+            [name, description, state, timeBudget, scheduledCompletionDate, milestoneSelect,
              saveButton, cancelButton].each { it.enabled = true }
             [editButton, newButton].each { it.enabled = false }
             saveButton.setClickShortcut(ShortcutAction.KeyCode.ENTER)
@@ -226,7 +247,8 @@ class TaskDetailView extends SubTree
         /** prepare SHOW state */
         @Override
         protected void showmode() {
-            [name, description, state, timeBudget, timeUsed, completionDate, scheduledCompletionDate,
+            [name, description, state, timeBudget, timeUsed,
+             completionDate, scheduledCompletionDate, milestoneSelect,
              saveButton, cancelButton].each { it.enabled = false }
             [editButton, newButton].each { it.enabled = true }
         }
@@ -237,6 +259,8 @@ class TaskDetailView extends SubTree
             [dialog.name, dialog.timeBudget, dialog.description,
              dialog.scheduledCompletionDate].each { it.clear() }
             dialog.state.deselectAll()
+            dialog.milestone.dataProvider = dialog.empty
+            dialog.milestone.enabled = false
             dialog.cancelButton.enabled = true
             dialog.saveButton.setClickShortcut(ShortcutAction.KeyCode.ENTER)
             ui.addWindow(dialog.window)
@@ -287,6 +311,22 @@ class TaskDetailView extends SubTree
             state.select currentDto.args['state'] ?: ''
             timeBudget.value = currentDto.args['timeBudget']?.toString() ?: ''
             timeUsed.value = currentDto.args['timeUsed']?.toString() ?: ''
+            milestoneSelect.deselectAll()
+            if (currentDto.related.projectmilestones || currentDto.related.unassignedmilestones) {
+                def mists = (currentDto.related.projectmilestones ?: []) + currentDto.related.unassignedmilestones ?: []
+                def listData = new ListDataProvider<ListItemDto>(mists)
+                listData.sortComparator = { ListItemDto t1, ListItemDto t2 ->
+                    t1.tag.compareTo(t2.tag)
+                }
+                milestoneSelect.dataProvider = listData
+                List<ListItemDto> relatedMist = currentDto.related.milestone
+                if (relatedMist) {
+                    def toSelect = mists.find { it.id.second == relatedMist[0].id.second }
+                    milestoneSelect.select(toSelect)
+                }
+            } else {
+                milestoneSelect.dataProvider = new ListDataProvider<ListItemDto>([])
+            }
             scheduledCompletionDate.value =
                     currentDto.args['scheduledCompletionDate'] ?: LocalDate.of(0, 0, 0)
             completionDate.value =
@@ -310,6 +350,11 @@ class TaskDetailView extends SubTree
             args['timeUsed'] = timeUsed.value
             args['scheduledCompletionDate'] = scheduledCompletionDate.value
             args['completionDate'] = completionDate.value
+            if (currentItemId.first == 'Subtask') {
+                def mist = milestoneSelect.selectedItems.find()
+                command.related.milestone = mist ? [mist] : []
+            }
+
             currentDto = taskService.createOrUpdateTask(command)
         }
 
@@ -327,6 +372,10 @@ class TaskDetailView extends SubTree
                 args['scheduledCompletionDate'] = dialog.scheduledCompletionDate.value
                 if (newType.get() != 'Project') {
                     command.related.supertask = [currentDto]
+                }
+                if (newType.get() == 'Subtask') {
+                    def mist = dialog.milestone.selectedItems.find()
+                    command.related.milestone = mist ? [mist] : []
                 }
                 def newNode = taskService.createOrUpdateTask(command)
                 newNode
@@ -354,6 +403,8 @@ class TaskDetailView extends SubTree
         ListSelect<String> state
         RadioButtonGroup<String> typeSelection
         DateField scheduledCompletionDate
+        ListDataProvider<ListItemDto> milestones, empty = new ListDataProvider<>([])
+        private ListSelect<ListItemDto> milestone
 
         Button saveButton, cancelButton
         Window window
@@ -366,24 +417,36 @@ class TaskDetailView extends SubTree
             window = winBuilder."$C.window"('create Task',
                     [spacing : true,
                      margin  : true,
-                     width   : '30%',
+                     width   : '50%',
                      modal   : true,
                      closable: false]) {
                 "$C.vlayout"('top', [spacing: true, margin: true]) {
                     "$F.text"('Task', [uikey: NAME])
-                    "$F.radiobuttongroup"('Type', [uikey            : TYPE,
-                                                   items            : ['Project',
-                                                                       'CompoundTask',
-                                                                       'Subtask'],
-                                                   selectionListener: {
-                                                       saveButton.enabled = true
-                                                   }])
                     "$F.textarea"('Description', [uikey: DESCRIPTION])
-                    "$F.list"('State', [uikey: STATE,
-                                        items: STATES,
-                                        rows : STATES.size()])
-                    "$F.text"('Assigned Time Budget', [uikey: TIME_BUDGET_PLAN])
-                    "$F.date"('Scheduled Completion', [uikey: COMPLETION_DATE_PLAN])
+                    "$C.hlayout"([uikey       : 'schedules',
+                                  spacing     : true,
+                                  gridPosition: [0, 1, 1, 1]]) {
+                        "$F.radiobuttongroup"('Type',
+                                [uikey            : TYPE,
+                                 items            : ['Project',
+                                                     'CompoundTask',
+                                                     'Subtask'],
+                                 selectionListener: {
+                                     typeSelectionListener()
+                                 }])
+                        "$F.list"('State', [uikey: STATE,
+                                            items: STATES,
+                                            rows : STATES.size()])
+                    }
+                    "$C.hlayout"([uikey       : 'schedules',
+                                  spacing     : true,
+                                  gridPosition: [0, 1, 1, 1]]) {
+                        "$F.text"('Assigned Time Budget', [uikey: TIME_BUDGET_PLAN])
+                        "$F.date"('Scheduled Completion', [uikey: COMPLETION_DATE_PLAN])
+                    }
+                    "$F.list"('Milestone', [uikey: MILESTONE,
+                                            rows : 5,
+                                            width: '80%'])
                     "$C.hlayout"([uikey: 'buttonfield', spacing: true]) {
                         "$F.button"('Cancel',
                                 [uikey         : 'cancelbutton',
@@ -403,11 +466,27 @@ class TaskDetailView extends SubTree
             timeBudget = dialogComponents."$keyPrefix$TIME_BUDGET_PLAN"
             state = dialogComponents."$keyPrefix$STATE"
             scheduledCompletionDate = dialogComponents."$keyPrefix$COMPLETION_DATE_PLAN"
+            milestone = dialogComponents."$keyPrefix$MILESTONE"
             typeSelection = dialogComponents."$keyPrefix$TYPE"
             saveButton = dialogComponents."${keyPrefix}savebutton"
             cancelButton = dialogComponents."${keyPrefix}cancelbutton"
             window.center()
             window
+        }
+
+        def typeSelectionListener() {
+            saveButton.enabled = true
+            Optional typeOptional = typeSelection.selectedItem//.get()
+            if(typeOptional.present) {
+                def type = typeSelection.selectedItem.get()
+                if (type == 'Subtask') {
+                    milestone.dataProvider = milestones ?: empty
+                    milestone.enabled = true
+                } else {
+                    milestone.dataProvider = empty
+                    milestone.enabled = false
+                }
+            }
         }
     }
 

@@ -25,13 +25,16 @@
 package de.geobe.tbp.core.service
 
 import de.geobe.tbp.core.domain.CompoundTask
+import de.geobe.tbp.core.domain.Milestone
 import de.geobe.tbp.core.domain.Project
 import de.geobe.tbp.core.domain.Subtask
 import de.geobe.tbp.core.domain.Task
 import de.geobe.tbp.core.domain.TaskState
 import de.geobe.tbp.core.dto.FullDto
+import de.geobe.tbp.core.dto.ListItemDto
 import de.geobe.tbp.core.dto.NodeDto
 import de.geobe.tbp.core.dto.TaskNodeDto
+import de.geobe.tbp.core.repository.MilestoneRepository
 import de.geobe.tbp.core.repository.TaskRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
@@ -48,6 +51,8 @@ class TaskService {
 
     @Autowired
     TaskRepository taskRepository
+    @Autowired
+    MilestoneRepository milestoneRepository
 
     @Transactional(readOnly = true)
     List<TaskNodeDto> getProjectTree() {
@@ -66,6 +71,21 @@ class TaskService {
         dto
     }
 
+    @Transactional(readOnly = true)
+    FullDto getProject(Serializable id) {
+        Task task = taskRepository.findOne(id)
+        Task top = getTopTask(task)
+        makeFullDto(top)
+    }
+
+    @Transactional(readOnly = true)
+    List<ListItemDto> getMilestonesInProject(Serializable id) {
+        Task task = taskRepository.findOne(id)
+        def used = getMilestones(task)
+        def free = unassignedMilestones
+        used + free
+    }
+
     @Transactional
     FullDto createOrUpdateTask(FullDto command) {
         Task task
@@ -76,6 +96,15 @@ class TaskService {
             def superId = command.related.supertask?.first()?.id?.second
             if (superId) {
                 setSupertask(task, superId)
+            }
+        }
+        if (task instanceof Subtask) {
+            if(command.related.milestone) {
+                def mistId = command.related.milestone?.first()?.id.second
+                if (mistId) {
+                    Milestone mist = milestoneRepository.findOne(mistId)
+                    task.milestone.add(mist)
+                }
             }
         }
         task.name = command.args['name']
@@ -109,27 +138,13 @@ class TaskService {
     }
 
     /**
-     * Polymorfic version of the method for projects. Per definitionem, a Project
+     * Polymorphic version of the method for projects. Per definition, a Project
      * has no supertask, so do nothing
      * @param project ignored
      * @param superId ignored
      */
     private void setSupertask(Project project, Long superId) {
         // do nothing!
-    }
-
-
-        private TaskNodeDto makeTaskNode(Task task) {
-        NodeDto dto = new TaskNodeDto(
-                [id : new Tuple2<String, Serializable>(makeIdKey(task), task.id),
-                 tag: task.name])
-        dto
-    }
-
-    private makeIdKey(def persistentObject) {
-        def cln = persistentObject.class.name
-        def key = cln.replaceFirst(/.*\./, '')
-        key
     }
 
     private TaskNodeDto makeTaskSubTree(CompoundTask task) {
@@ -172,6 +187,10 @@ class TaskService {
             dto.related.supertask = task?.supertask.all.collect { makeTaskNode(it) } ?: []
             if (task instanceof CompoundTask) {
                 dto.related.subtask = task?.subtask.all.collect { makeTaskNode(it) } ?: []
+            } else if (task instanceof Subtask) {
+                dto.related.milestone = getAssignedMilestones(task)
+                dto.related.projectmilestones = getMilestones(task)
+                dto.related.unassignedmilestones = getUnassignedMilestones()
             }
         }
         dto
@@ -194,4 +213,59 @@ class TaskService {
         }
         task
     }
+
+    private List<ListItemDto> getAssignedMilestones(Subtask task) {
+        if (task.milestone.one)
+            [makeMilestoneItem(task.milestone.one)]
+        else
+            []
+    }
+
+    private List<ListItemDto> getMilestones(Task task) {
+        Task top = getTopTask(task)
+        def milestones = getAllSubtasks(top).collect { it.milestone.one }.grep() toSet()
+        milestones?.collect { makeMilestoneItem(it) } ?: []
+    }
+
+    private List<ListItemDto> getUnassignedMilestones() {
+        def milestones = milestoneRepository.findAllBySubtasksIsNull()
+        milestones.collect { makeMilestoneItem(it) }
+    }
+
+    public TaskNodeDto makeTaskNode(Task task) {
+        NodeDto dto = new TaskNodeDto(
+                [id : new Tuple2<String, Serializable>(makeIdKey(task), task.id),
+                 tag: task.name])
+        dto
+    }
+
+    public makeMilestoneItem(Milestone mist) {
+        new ListItemDto([id : new Tuple2<String, Long>(makeIdKey(mist), mist.id),
+                         tag: mist.name])
+    }
+
+    private makeIdKey(def persistentObject) {
+        def cln = persistentObject.class.name
+        def key = cln.replaceFirst(/.*\./, '')
+        key
+    }
+
+    private List<Subtask> getAllSubtasks(Task t) {
+        def subs = []
+        if (t instanceof Subtask) {
+            subs << t
+        } else if (t instanceof CompoundTask) {
+            subs = t.subtask.all.collect { getAllSubtasks(it) } flatten()
+        }
+        subs
+    }
+
+    private Task getTopTask(Task task) {
+        def top = task?.supertask.one ?: task
+        while (top?.supertask.one) {
+            top = top.supertask.one
+        }
+        top
+    }
+
 }
