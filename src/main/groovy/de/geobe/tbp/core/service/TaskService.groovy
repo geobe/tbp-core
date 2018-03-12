@@ -99,10 +99,12 @@ class TaskService {
             }
         }
         if (task instanceof Subtask) {
-            def mistId = command.related.milestone?.first()?.id.second
-            if (mistId) {
-                Milestone mist = milestoneRepository.findOne(mistId)
-                task.milestone.add(mist)
+            if(command.related.milestone) {
+                def mistId = command.related.milestone?.first()?.id.second
+                if (mistId) {
+                    Milestone mist = milestoneRepository.findOne(mistId)
+                    task.milestone.add(mist)
+                }
             }
         }
         task.name = command.args['name']

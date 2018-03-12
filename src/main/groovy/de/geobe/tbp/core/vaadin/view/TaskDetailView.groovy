@@ -476,13 +476,16 @@ class TaskDetailView extends SubTree
 
         def typeSelectionListener() {
             saveButton.enabled = true
-            def type = typeSelection.selectedItem.get()
-            if (type == 'Subtask') {
-                milestone.dataProvider = milestones ?: empty
-                milestone.enabled = true
-            } else {
-                milestone.dataProvider = empty
-                milestone.enabled = false
+            Optional typeOptional = typeSelection.selectedItem//.get()
+            if(typeOptional.present) {
+                def type = typeSelection.selectedItem.get()
+                if (type == 'Subtask') {
+                    milestone.dataProvider = milestones ?: empty
+                    milestone.enabled = true
+                } else {
+                    milestone.dataProvider = empty
+                    milestone.enabled = false
+                }
             }
         }
     }
