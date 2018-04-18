@@ -117,9 +117,8 @@ class TaskDetailView extends SubTree
                 "$F.text"('Used Time Budget', [uikey  : TIME_BUDGET_USED,
                                                enabled: false])
             }
-            "$C.hlayout"([uikey       : 'schedules',
-                          spacing     : true,
-                          gridPosition: [0, 1, 1, 1]]) {
+            "$C.hlayout"([uikey  : 'schedules',
+                          spacing: true]) {
                 "$F.date"('Scheduled Completion', [uikey: COMPLETION_DATE_PLAN])
                 "$F.date"('Completion achieved', [uikey  : COMPLETION_DATE_DONE,
                                                   enabled: false])
@@ -127,8 +126,7 @@ class TaskDetailView extends SubTree
             "$F.list"('Milestone', [uikey: MILESTONE,
                                     rows : 5,
                                     width: '80%'])
-            "$C.hlayout"([uikey       : 'buttonfield', spacing: true,
-                          gridPosition: [0, 3, 1, 3]]) {
+            "$C.hlayout"([uikey: 'buttonfield', spacing: true]) {
                 "$F.button"('New',
                         [uikey         : 'newbutton',
                          disableOnClick: true,
@@ -269,7 +267,7 @@ class TaskDetailView extends SubTree
         protected void onCreateSave() {
             currentDto = createNewItem()
             currentItemId = currentDto.id
-            setFieldValues()
+            onEditCancel()
             dialog.window.close()
             onEditDone(true)
         }
@@ -297,14 +295,14 @@ class TaskDetailView extends SubTree
         @Override
         void initItem(Long itemId) {
             currentDto = taskService.getTaskDetails(itemId)
-            setFieldValues()
+            onEditCancel()
         }
 
         /**
-         * set all fields from the current full dto object
+         * reset all fields from the current full dto object
          */
         @Override
-        protected void setFieldValues() {
+        protected void onEditCancel() {
             name.value = currentDto.args['name'] ?: ''
             description.value = currentDto.args['description'] ?: ''
             state.deselectAll()
@@ -338,7 +336,7 @@ class TaskDetailView extends SubTree
          * Save current item after editing to persistent storage, typically by calling an appropriate service.
          */
         @Override
-        protected void saveItem() {
+        protected void onEditSave() {
             FullDto command = new FullDto()
             command.id = currentItemId
             command.tag = name.value
@@ -415,25 +413,17 @@ class TaskDetailView extends SubTree
             String keyPrefix = "${subkeyPrefix}dialog."
             winBuilder.keyPrefix = keyPrefix
             window = winBuilder."$C.window"('create Task',
-                    [spacing : true,
-                     margin  : true,
-                     width   : '50%',
-                     modal   : true,
-                     closable: false]) {
+                    [spacing : true, margin  : true, width   : '512px',
+                     modal   : true, closable: false]) {
                 "$C.vlayout"('top', [spacing: true, margin: true]) {
                     "$F.text"('Task', [uikey: NAME])
                     "$F.textarea"('Description', [uikey: DESCRIPTION])
-                    "$C.hlayout"([uikey       : 'schedules',
-                                  spacing     : true,
-                                  gridPosition: [0, 1, 1, 1]]) {
+                    "$C.hlayout"([uikey  : 'schedules',
+                                  spacing: true]) {
                         "$F.radiobuttongroup"('Type',
                                 [uikey            : TYPE,
-                                 items            : ['Project',
-                                                     'CompoundTask',
-                                                     'Subtask'],
-                                 selectionListener: {
-                                     typeSelectionListener()
-                                 }])
+                                 items            : ['Project', 'CompoundTask', 'Subtask'],
+                                 selectionListener: { typeSelectionListener() }])
                         "$F.list"('State', [uikey: STATE,
                                             items: STATES,
                                             rows : STATES.size()])
@@ -477,7 +467,7 @@ class TaskDetailView extends SubTree
         def typeSelectionListener() {
             saveButton.enabled = true
             Optional typeOptional = typeSelection.selectedItem//.get()
-            if(typeOptional.present) {
+            if (typeOptional.present) {
                 def type = typeSelection.selectedItem.get()
                 if (type == 'Subtask') {
                     milestone.dataProvider = milestones ?: empty

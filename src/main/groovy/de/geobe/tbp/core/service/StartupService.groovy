@@ -93,7 +93,7 @@ class StartupService implements IStartupService {
                      state  : MilestoneState.OPEN,
                      dueDate: new Date() + 14])
             def mist2 = new Milestone(
-                    [name   : 'Monolothic Examples Done',
+                    [name   : 'Monolithic Examples Done',
                      state  : MilestoneState.COMPLETED,
                      dueDate: new Date() - 10])
             def mist3 = new Milestone(
