@@ -82,6 +82,8 @@ class MainUI extends UI {
                 "$F.subtree"(taskSelectTree, [uikey: 'tasktree'])
                 "$F.subtree"(taskDetails, [uikey: 'taskpanel', caption: 'Task Editor'])
             }
+            "$C.hsplit"('Milestone Management',[uikey: 'milestonesplit', splitPosition: 40.0f]) {
+            }
         }
 
     }
