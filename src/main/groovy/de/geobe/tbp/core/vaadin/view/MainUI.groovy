@@ -77,9 +77,11 @@ class MainUI extends UI {
         taskDetails = taskDetailView.buildSubtree(vaadin, 'taskdetail')
 
         // build the top level view, i.e. the root of the vaadin component tree
-        root = vaadin."$C.hsplit"([uikey: 'topsplit', splitPosition: 40.0f]) {
-            "$F.subtree"(taskSelectTree, [uikey: 'tasktree'])
-            "$F.subtree"(taskDetails, [uikey: 'taskpanel', caption: 'Task Editor'])
+        root = vaadin."$C.tabsheet"([uikey: 'toptab']) {
+            "$C.hsplit"('Task Management',[uikey: 'topsplit', splitPosition: 40.0f]) {
+                "$F.subtree"(taskSelectTree, [uikey: 'tasktree'])
+                "$F.subtree"(taskDetails, [uikey: 'taskpanel', caption: 'Task Editor'])
+            }
         }
 
     }
