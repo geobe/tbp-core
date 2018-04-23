@@ -58,9 +58,11 @@ class MainUI extends UI {
     private TaskStructureTree taskStructureTree
     @Autowired
     private TaskDetailView taskDetailView
+    @Autowired
+    private MilestoneList milestoneList
 
     // here are all the ui components
-    private Component root, taskSelectTree, taskDetails
+    private Component root, taskSelectTree, taskDetails, milestoneSelectList
 
 
     @Override
@@ -76,6 +78,7 @@ class MainUI extends UI {
         // construct all view building blocks
         taskSelectTree = taskStructureTree.buildSubtree(vaadin, 'tasktree')
         taskDetails = taskDetailView.buildSubtree(vaadin, 'taskdetail')
+        milestoneSelectList = milestoneList.buildSubtree(vaadin, 'milstonelist')
 
         // build the top level view, i.e. the root of the vaadin component tree
         root = vaadin."$C.tabsheet"([uikey: 'toptab']) {
@@ -84,6 +87,7 @@ class MainUI extends UI {
                 "$F.subtree"(taskDetails, [uikey: 'taskpanel', caption: 'Task Editor'])
             }
             "$C.hsplit"('Milestone Management', [uikey: 'milestonesplit', splitPosition: 40.0f]) {
+                "$F.subtree"(milestoneSelectList, [uikey: 'milestonelist'])
             }
         }
 
