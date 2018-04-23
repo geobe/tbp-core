@@ -46,8 +46,8 @@ import org.springframework.beans.factory.annotation.Autowired
 
 import java.time.LocalDate
 
-import static VaadinBuilder.C
-import static VaadinBuilder.F
+import static de.geobe.util.vaadin.builder.VaadinBuilder.C
+import static de.geobe.util.vaadin.builder.VaadinBuilder.F
 
 /**
  * editor tab for tasks
