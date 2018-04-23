@@ -24,13 +24,19 @@
 
 package de.geobe.tbp.core.vaadin.view
 
+import com.vaadin.data.provider.DataProvider
+import com.vaadin.data.provider.ListDataProvider
 import com.vaadin.spring.annotation.SpringComponent
 import com.vaadin.spring.annotation.UIScope
 import com.vaadin.ui.Component
+import com.vaadin.ui.ListSelect
+import de.geobe.tbp.core.dto.ListItemDto
+import de.geobe.tbp.core.service.MilestoneService
 import de.geobe.util.vaadin.builder.SubTree
 import de.geobe.util.vaadin.type.DetailSelector
+import org.springframework.beans.factory.annotation.Autowired
 
-// static import reduces code noise in vaadinbuilder pseudomethod strings
+// static import reduces code bloat in VaadinBuilder pseudomethod strings
 import static de.geobe.util.vaadin.builder.VaadinBuilder.C
 import static de.geobe.util.vaadin.builder.VaadinBuilder.F
 
@@ -45,6 +51,15 @@ class MilestoneList extends SubTree
         implements Serializable, DetailSelector<Tuple2<String, Long>> {
 
     public static final MILESTONE_LIST = 'milestonelist'
+
+    /** the Vaadin ListSelect component built by VaadinBuilder */
+    private ListSelect<ListItemDto> milestoneList
+    /** here are the displayed data */
+    private ListDataProvider<ListItemDto> listData
+    /** the service delivering list data */
+    @Autowired
+    private MilestoneService milestoneService
+
     /**
      * build component subtree.
      * @return topmost component (i.e. root) of subtree
@@ -60,7 +75,16 @@ class MilestoneList extends SubTree
         }
     }
 
-    /**
+    @Override
+    void init(Object... value) {
+        // to reduce code bloat, we define a local variable
+        def uic = vaadin.uiComponents
+        milestoneList = uic."${subkeyPrefix + MILESTONE_LIST}"
+        listData = DataProvider.ofCollection(milestoneService.milestoneList)
+        milestoneList.dataProvider = listData
+    }
+
+/**
      * enable and update the selector component after editing an item
      * @param itemId identifies edited item
      * @param caption eventually updated caption of the edited item

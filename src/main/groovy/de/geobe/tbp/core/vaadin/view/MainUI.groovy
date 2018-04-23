@@ -33,8 +33,8 @@ import de.geobe.tbp.core.service.MilestoneService
 import de.geobe.util.vaadin.builder.VaadinBuilder
 import org.springframework.beans.factory.annotation.Autowired
 
-import static VaadinBuilder.C
-import static VaadinBuilder.F
+import static de.geobe.util.vaadin.builder.VaadinBuilder.C
+import static de.geobe.util.vaadin.builder.VaadinBuilder.F
 
 
 /**
@@ -97,5 +97,6 @@ class MainUI extends UI {
         taskDetailView.init()
         taskStructureTree.init()
         taskStructureTree.expandAll()
+        milestoneList.init()
     }
 }
