@@ -27,13 +27,11 @@ package de.geobe.tbp.core
 import de.geobe.tbp.core.service.MilestoneService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.ContextConfiguration
 import spock.lang.Specification
 
 /**
  * Created by georg beier on 20.04.2018.
  */
-@ContextConfiguration   // needed by Spock for Spring integration tests
 @SpringBootTest         // use Spring test framework
 class ServiceSpecification extends Specification {
 
