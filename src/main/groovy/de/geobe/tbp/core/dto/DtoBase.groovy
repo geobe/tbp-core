@@ -43,7 +43,14 @@ class ListItemDto implements IdProvider<Tuple2<String, Serializable>> {
         "${this.tag}"
     }
 
-    def getType() {id.first}
+    def getType() { id.first }
+
+    static ListItemDto makeDto(def domainObject, def tagAttribute = null) {
+        new ListItemDto([id : new Tuple2<String, Long>(
+                Dto.makeIdKey(domainObject), domainObject.id),
+                         tag: tagAttribute ?
+                                 domainObject."$tagAttribute" : domainObject.'name'])
+    }
 }
 
 /**
@@ -62,7 +69,7 @@ class NodeDto extends ListItemDto {
         "$c: $tag"
     }
 
-    def getType() {id.first}
+    def getType() { id.first }
 }
 
 /**
@@ -75,5 +82,16 @@ class FullDto {
     String tag
     LinkedHashMap<String, Object> args = [:]
     Map<String, List<ListItemDto>> related = [:]
+}
+
+/**
+ * Utility class that provides common functions for creating and handling DTOs
+ */
+class Dto {
+    static makeIdKey(def domainObject) {
+        def cln = domainObject.class.name
+        def key = cln.replaceFirst(/.*\./, '')
+        key
+    }
 }
 

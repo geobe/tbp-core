@@ -39,7 +39,8 @@ dependencies {
 //	compile group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.25'
 	runtime('org.springframework.boot:spring-boot-devtools')
 	testCompile('org.springframework.boot:spring-boot-starter-test')
-}
+	testCompile('org.spockframework:spock-core:1.0-groovy-2.4')
+	testCompile('org.spockframework:spock-spring:1.0-groovy-2.4')}
 
 dependencyManagement {
 	imports {

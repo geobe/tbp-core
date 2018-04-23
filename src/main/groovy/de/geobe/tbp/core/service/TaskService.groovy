@@ -30,6 +30,7 @@ import de.geobe.tbp.core.domain.Project
 import de.geobe.tbp.core.domain.Subtask
 import de.geobe.tbp.core.domain.Task
 import de.geobe.tbp.core.domain.TaskState
+import de.geobe.tbp.core.dto.Dto
 import de.geobe.tbp.core.dto.FullDto
 import de.geobe.tbp.core.dto.ListItemDto
 import de.geobe.tbp.core.dto.NodeDto
@@ -166,7 +167,7 @@ class TaskService {
     private FullDto makeFullDto(Task task) {
         FullDto dto = new FullDto()
         if (task) {
-            dto.id = new Tuple2<String, Serializable>(makeIdKey(task), task.id)
+            dto.id = new Tuple2<String, Serializable>(Dto.makeIdKey(task), task.id)
             dto.args['name'] = task.name
             dto.args['description'] = task.description
             dto.args['state'] = task.state
@@ -216,7 +217,7 @@ class TaskService {
 
     private List<ListItemDto> getAssignedMilestones(Subtask task) {
         if (task.milestone.one)
-            [makeMilestoneItem(task.milestone.one)]
+            [ListItemDto.makeDto(task.milestone.one)]
         else
             []
     }
@@ -224,30 +225,19 @@ class TaskService {
     private List<ListItemDto> getMilestones(Task task) {
         Task top = getTopTask(task)
         def milestones = getAllSubtasks(top).collect { it.milestone.one }.grep() toSet()
-        milestones?.collect { makeMilestoneItem(it) } ?: []
+        milestones?.collect { ListItemDto.makeDto(it) } ?: []
     }
 
     private List<ListItemDto> getUnassignedMilestones() {
         def milestones = milestoneRepository.findAllBySubtasksIsNull()
-        milestones.collect { makeMilestoneItem(it) }
+        milestones.collect { ListItemDto.makeDto(it) }
     }
 
     public TaskNodeDto makeTaskNode(Task task) {
         NodeDto dto = new TaskNodeDto(
-                [id : new Tuple2<String, Serializable>(makeIdKey(task), task.id),
+                [id : new Tuple2<String, Serializable>(Dto.makeIdKey(task), task.id),
                  tag: task.name])
         dto
-    }
-
-    public makeMilestoneItem(Milestone mist) {
-        new ListItemDto([id : new Tuple2<String, Long>(makeIdKey(mist), mist.id),
-                         tag: mist.name])
-    }
-
-    private makeIdKey(def persistentObject) {
-        def cln = persistentObject.class.name
-        def key = cln.replaceFirst(/.*\./, '')
-        key
     }
 
     private List<Subtask> getAllSubtasks(Task t) {

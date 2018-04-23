@@ -29,6 +29,7 @@ import com.vaadin.server.VaadinRequest
 import com.vaadin.spring.annotation.SpringUI
 import com.vaadin.ui.Component
 import com.vaadin.ui.UI
+import de.geobe.tbp.core.service.MilestoneService
 import de.geobe.util.vaadin.builder.VaadinBuilder
 import org.springframework.beans.factory.annotation.Autowired
 
@@ -78,11 +79,11 @@ class MainUI extends UI {
 
         // build the top level view, i.e. the root of the vaadin component tree
         root = vaadin."$C.tabsheet"([uikey: 'toptab']) {
-            "$C.hsplit"('Task Management',[uikey: 'topsplit', splitPosition: 40.0f]) {
+            "$C.hsplit"('Task Management', [uikey: 'topsplit', splitPosition: 40.0f]) {
                 "$F.subtree"(taskSelectTree, [uikey: 'tasktree'])
                 "$F.subtree"(taskDetails, [uikey: 'taskpanel', caption: 'Task Editor'])
             }
-            "$C.hsplit"('Milestone Management',[uikey: 'milestonesplit', splitPosition: 40.0f]) {
+            "$C.hsplit"('Milestone Management', [uikey: 'milestonesplit', splitPosition: 40.0f]) {
             }
         }
 
