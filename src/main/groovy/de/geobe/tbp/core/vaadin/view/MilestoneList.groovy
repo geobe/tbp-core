@@ -82,9 +82,7 @@ class MilestoneList extends SubTree
 
     @Override
     void init(Object... value) {
-        // to reduce code bloat, we define a local variable
-        def uic = vaadin.uiComponents
-        milestoneList = uic."${subkeyPrefix + MILESTONE_LIST}"
+        milestoneList = subtreeComponent MILESTONE_LIST
         listData = DataProvider.ofCollection(milestoneService.milestoneList)
         milestoneList.dataProvider = listData
     }

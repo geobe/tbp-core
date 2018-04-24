@@ -94,8 +94,7 @@ class TaskStructureTree extends SubTree
 
     @Override
     void init(Object... value) {
-        uiComponents = vaadin.uiComponents
-        taskTree = uiComponents."${subkeyPrefix + TASKTREE}"
+        taskTree = subtreeComponent TASKTREE
         treeHelper = new VaadinTreeHelper<TaskNodeDto>(taskTree)
         treeHelper.buildTree(taskService.getProjectTree(), collector)
 

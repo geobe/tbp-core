@@ -153,19 +153,18 @@ class TaskDetailView extends SubTree
 
     @Override
     void init(Object... value) {
-        uiComponents = vaadin.uiComponents
-        name = uiComponents."$subkeyPrefix$NAME"
-        description = uiComponents."$subkeyPrefix$DESCRIPTION"
-        state = uiComponents."$subkeyPrefix$STATE"
-        timeBudget = uiComponents."$subkeyPrefix$TIME_BUDGET_PLAN"
-        timeUsed = uiComponents."$subkeyPrefix$TIME_BUDGET_USED"
-        scheduledCompletionDate = uiComponents."$subkeyPrefix$COMPLETION_DATE_PLAN"
-        completionDate = uiComponents."$subkeyPrefix$COMPLETION_DATE_DONE"
-        milestoneSelect = uiComponents."$subkeyPrefix$MILESTONE"
-        newButton = uiComponents."${subkeyPrefix}newbutton"
-        editButton = uiComponents."${subkeyPrefix}editbutton"
-        saveButton = uiComponents."${subkeyPrefix}savebutton"
-        cancelButton = uiComponents."${subkeyPrefix}cancelbutton"
+        name = subtreeComponent NAME
+        description = subtreeComponent DESCRIPTION
+        state = subtreeComponent STATE
+        timeBudget = subtreeComponent TIME_BUDGET_PLAN
+        timeUsed = subtreeComponent TIME_BUDGET_USED
+        scheduledCompletionDate = subtreeComponent COMPLETION_DATE_PLAN
+        completionDate = subtreeComponent COMPLETION_DATE_DONE
+        milestoneSelect = subtreeComponent MILESTONE
+        newButton = subtreeComponent "newbutton"
+        editButton = subtreeComponent "editbutton"
+        saveButton = subtreeComponent "savebutton"
+        cancelButton = subtreeComponent "cancelbutton"
         taskTree.selectionModel.addListenerForKey(this, 'CompoundTask')
         taskTree.selectionModel.addListenerForKey(this, 'Subtask')
         taskTree.selectionModel.addListenerForKey(this, 'Project')
