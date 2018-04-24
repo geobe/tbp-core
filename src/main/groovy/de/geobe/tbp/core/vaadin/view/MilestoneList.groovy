@@ -26,6 +26,7 @@ package de.geobe.tbp.core.vaadin.view
 
 import com.vaadin.data.provider.DataProvider
 import com.vaadin.data.provider.ListDataProvider
+import com.vaadin.event.selection.MultiSelectionEvent
 import com.vaadin.spring.annotation.SpringComponent
 import com.vaadin.spring.annotation.UIScope
 import com.vaadin.ui.Component
@@ -70,6 +71,10 @@ class MilestoneList extends SubTree
             // wrap list in a panel to provide scroll bars, if needed
             "$C.panel"('Milestones', [spacing: true, margin: true]) {
                 "$F.list"([uikey   : MILESTONE_LIST,
+                        selectionListener: {MultiSelectionEvent<ListItemDto> event ->
+                            Optional item = event.firstSelectedItem
+                            println item.present ? item.get() : 'nothing selected'
+                        },
                            sizeFull: null])
             }
         }
