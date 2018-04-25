@@ -51,6 +51,8 @@ class Milestone {
     MilestoneState state
     Date dueDate = new Date() + (14 + new Random(System.currentTimeMillis()).nextInt(42))
 
+    Long getId() { id }
+
     // association to subtasks
     @OneToMany(mappedBy = 'milestone',
             cascade = CascadeType.PERSIST)

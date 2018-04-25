@@ -168,6 +168,7 @@ class TaskService {
         FullDto dto = new FullDto()
         if (task) {
             dto.id = new Tuple2<String, Serializable>(Dto.makeIdKey(task), task.id)
+            dto.tag = task.name
             dto.args['name'] = task.name
             dto.args['description'] = task.description
             dto.args['state'] = task.state

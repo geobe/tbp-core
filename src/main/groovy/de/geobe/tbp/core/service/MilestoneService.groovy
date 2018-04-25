@@ -24,11 +24,20 @@
 
 package de.geobe.tbp.core.service
 
+import de.geobe.tbp.core.domain.Milestone
+import de.geobe.tbp.core.domain.MilestoneState
+import de.geobe.tbp.core.domain.TaskState
+import de.geobe.tbp.core.dto.Dto
+import de.geobe.tbp.core.dto.FullDto
 import de.geobe.tbp.core.dto.ListItemDto
 import de.geobe.tbp.core.repository.MilestoneRepository
+import de.geobe.tbp.core.repository.SubtaskRepository
+import de.geobe.tbp.core.repository.TaskRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+
+import java.time.LocalDate
 
 /**
  * Created by georg beier on 20.04.2018.
@@ -38,7 +47,9 @@ import org.springframework.transaction.annotation.Transactional
 class MilestoneService {
 
     @Autowired
-    MilestoneRepository milestoneRepository
+    private MilestoneRepository milestoneRepository
+    @Autowired
+    private SubtaskRepository subtaskRepository
 
     /**
      * Create a list sorted by name of Milestone ListItemDto objects
@@ -50,5 +61,74 @@ class MilestoneService {
             milestones.add ListItemDto.makeDto(it)
         }
         milestones
+    }
+
+    /**
+     * Create a Dto with all detail information for a milestone
+     * @param id database key
+     * @return the dto
+     */
+    @Transactional(readOnly = true)
+    FullDto getMilestoneDetails(Serializable id) {
+        Milestone milestone = milestoneRepository.findOne(id)
+        FullDto dto = makeFullDto(milestone)
+    }
+
+    /**
+     * Get a list Subtask dto's that could be related to this milestone.<br>
+     * This method contains business logic that is not represented in the static
+     * consistency rules of the domain model but should be added to tha
+     * association handling methods. Rules implemented here are:
+     * <ul><li>A COMPLETED Milestone cannot change its related tasks.</li>
+     * <li>A COMPLETED or ABANDONED task cannot be assigned to a milestone.</li>
+     * <li><em>Open question:</em> Can a Milestone be assigned to subtasks of
+     * different projects?</li></ul>
+     * @param id
+     * @return list of potentially assignable subtasks
+     */
+    @Transactional(readOnly = true)
+    List<ListItemDto> getSubtaskSelectList(Serializable id) {
+        def subtasks = []
+        Milestone milestone = milestoneRepository.findOne(id)
+        if (milestone.state != MilestoneState.COMPLETED) {
+            def subs = subtaskRepository.findAllByStateNotIn(
+                    [TaskState.COMPLETED, TaskState.ABANDONED])
+            subs.findAll {
+                it.milestone.one?.id != id
+            }.sort {a, b ->
+                a.name <=> b.name
+            }.each {
+                subtasks.add ListItemDto.makeDto(it)
+            }
+        }
+        subtasks
+    }
+
+    /**
+     * actually build the dto from database content
+     * @param milestone
+     * @return the dto
+     */
+    private FullDto makeFullDto(Milestone milestone) {
+        FullDto dto = new FullDto()
+        if (milestone) {
+            // create key
+            dto.id = new Tuple2<String, Serializable>(Dto.makeIdKey(milestone), milestone.id)
+            dto.tag = milestone.name
+            // set simple attributes
+            dto.args['name'] = milestone.name
+            dto.args['state'] = milestone.state
+            def duedate = milestone.dueDate
+            if (duedate instanceof Date) {
+                // show date in localized date format
+                dto.args['dueDate'] = duedate.toLocalDate()
+            } else {
+                // if no date is defined, set it to 1.1.2000
+                dto.args['dueDate'] = LocalDate.of(2000, 1, 1)
+            }
+            // set association to subtasks
+            dto.related.subtask = milestone?.subtask.all.collect { ListItemDto.makeDto(it) } ?: []
+        }
+        dto
     }
 }
