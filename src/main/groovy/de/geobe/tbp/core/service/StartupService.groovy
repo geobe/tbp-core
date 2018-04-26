@@ -52,66 +52,77 @@ class StartupService implements IStartupService {
     @Autowired
     private TaskRepository taskRepository
     @Autowired
-    MilestoneRepository milestoneRepository
+    private MilestoneRepository milestoneRepository
 
     @Override
     @Transactional
     void initApplicationData() {
         if (!taskRepository.findAll()) {
-            log.info("initializing data at ${LocalDateTime.now()}")
-            def proj = new Project([name: 'Prepare Lecture'])
-            def prepsl = new CompoundTask([name: 'Prepare Slides'])
-            def prepex = new CompoundTask([name: 'Prepare Example Code'])
-            proj.subtask.add([prepsl, prepex])
-            def exmon = new CompoundTask([name: 'Monolithic example'])
-            def exmic = new CompoundTask([name: 'Microservice example'])
-            def exspl = new Subtask([name                   : 'Simple Examples',
-                                     scheduledCompletionDate: (new Date() + 5).clearTime()])
-            prepex.subtask.add([exmon, exspl, exmic])
-            def sl1 = new Subtask([name                   : 'Select Existing Slides',
-                                   scheduledCompletionDate: (new Date() + 3).clearTime()])
-            def sl2 = new Subtask([name                   : 'Translate Selected Existing Slides',
-                                   scheduledCompletionDate: (new Date() + 6).clearTime()])
-            def sl3 = new Subtask([name                   : 'Create New Slides',
-                                   scheduledCompletionDate: (new Date() + 10).clearTime()])
-            prepsl.subtask.add([sl1, sl2, sl3])
-            def ex1 = new Subtask([name                   : 'Program Monolithic Examples',
-                                   scheduledCompletionDate: (new Date() + 15).clearTime()])
-            def ex2 = new Subtask([name                   : 'Test Monolithic Examples',
-                                   scheduledCompletionDate: (new Date() + 17).clearTime()])
-            def ex4 = new Subtask([name                   : 'Refactor Monolithic Examples',
-                                   scheduledCompletionDate: (new Date() + 25).clearTime()])
-            def ex3 = new Subtask([name                   : 'Install Docker',
-                                   scheduledCompletionDate: (new Date() + 1).clearTime()])
-            def ex5 = new Subtask([name                   : 'Test MMicroservice Examples',
-                                   scheduledCompletionDate: (new Date() + 15).clearTime()])
-            exmon.subtask.add(ex1)
-            ex2.supertask.add exmon
-            exmic.subtask.add([ex3, ex4, ex5])
-            def mist1 = new Milestone(
-                    [name   : 'Slides Available',
-                     state  : MilestoneState.OPEN,
-                     dueDate: new Date() + 14])
-            def mist2 = new Milestone(
-                    [name   : 'Monolithic Examples Done',
-                     state  : MilestoneState.COMPLETED,
-                     dueDate: new Date() - 10])
-            def mist3 = new Milestone(
-                    [name   : 'Microservice Examples Done',
-                     state  : MilestoneState.OPEN,
-                     dueDate: new Date() - 12])
-            def mistx = new Milestone(
-                    [name   : 'Simple Examples Done',
-                     state  : MilestoneState.OPEN,
-                     dueDate: new Date() + 120])
-            mist1.subtask.add([sl1, sl2, sl3])
-            mist2.subtask.add([ex1, ex2])
-            ex3.milestone.add(mist3)
-            ex4.milestone.add(mist3)
-            ex5.milestone.add(mist3)
-            milestoneRepository.save([mist1, mist2, mist3, mistx])
-            taskRepository.saveAndFlush(proj)
+            createTestData(taskRepository, milestoneRepository)
         }
+    }
+
+    /**
+     * Make tast data generation available to test classes without
+     * full Spring context. There @Autowired is not generally available
+     * @param taskRepo Spring JPA repository interface
+     * @param milestoneRepo Spring JPA repository interface
+     */
+    public void createTestData(TaskRepository taskRepo,
+            MilestoneRepository milestoneRepo) {
+        log.info("initializing data at ${LocalDateTime.now()}")
+        def proj = new Project([name: 'Prepare Lecture'])
+        def prepsl = new CompoundTask([name: 'Prepare Slides'])
+        def prepex = new CompoundTask([name: 'Prepare Example Code'])
+        proj.subtask.add([prepsl, prepex])
+        def exmon = new CompoundTask([name: 'Monolithic example'])
+        def exmic = new CompoundTask([name: 'Microservice example'])
+        def exspl = new Subtask([name                   : 'Simple Examples',
+                                 scheduledCompletionDate: (new Date() + 5).clearTime()])
+        prepex.subtask.add([exmon, exspl, exmic])
+        def sl1 = new Subtask([name                   : 'Select Existing Slides',
+                               scheduledCompletionDate: (new Date() + 3).clearTime()])
+        def sl2 = new Subtask([name                   : 'Translate Selected Existing Slides',
+                               scheduledCompletionDate: (new Date() + 6).clearTime()])
+        def sl3 = new Subtask([name                   : 'Create New Slides',
+                               scheduledCompletionDate: (new Date() + 10).clearTime()])
+        prepsl.subtask.add([sl1, sl2, sl3])
+        def ex1 = new Subtask([name                   : 'Program Monolithic Examples',
+                               scheduledCompletionDate: (new Date() + 15).clearTime()])
+        def ex2 = new Subtask([name                   : 'Test Monolithic Examples',
+                               scheduledCompletionDate: (new Date() + 17).clearTime()])
+        def ex4 = new Subtask([name                   : 'Refactor Monolithic Examples',
+                               scheduledCompletionDate: (new Date() + 25).clearTime()])
+        def ex3 = new Subtask([name                   : 'Install Docker',
+                               scheduledCompletionDate: (new Date() + 1).clearTime()])
+        def ex5 = new Subtask([name                   : 'Test MMicroservice Examples',
+                               scheduledCompletionDate: (new Date() + 15).clearTime()])
+        exmon.subtask.add(ex1)
+        ex2.supertask.add exmon
+        exmic.subtask.add([ex3, ex4, ex5])
+        def mist1 = new Milestone(
+                [name   : 'Slides Available',
+                 state  : MilestoneState.OPEN,
+                 dueDate: new Date() + 14])
+        def mist2 = new Milestone(
+                [name   : 'Monolithic Examples Done',
+                 state  : MilestoneState.COMPLETED,
+                 dueDate: new Date() - 10])
+        def mist3 = new Milestone(
+                [name   : 'Microservice Examples Done',
+                 state  : MilestoneState.OPEN,
+                 dueDate: new Date() - 12])
+        def mistx = new Milestone(
+                [name   : 'Simple Examples Done',
+                 state  : MilestoneState.OPEN,
+                 dueDate: new Date() + 120])
+        mist1.subtask.add([sl1, sl2, sl3])
+        mist2.subtask.add([ex1, ex2])
+        ex3.milestone.add(mist3)
+        ex4.milestone.add(mist3)
+        ex5.milestone.add(mist3)
+        milestoneRepo.save([mist1, mist2, mist3, mistx])
+        taskRepo.saveAndFlush(proj)
     }
 
     @Override

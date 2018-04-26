@@ -24,7 +24,9 @@
 
 package de.geobe.tbp.core
 
+import de.geobe.tbp.core.domain.MilestoneState
 import de.geobe.tbp.core.domain.TaskState
+import de.geobe.tbp.core.dto.FullDto
 import de.geobe.tbp.core.repository.TaskRepository
 import de.geobe.tbp.core.service.MilestoneService
 import de.geobe.tbp.core.service.TaskService
@@ -98,5 +100,54 @@ class ServiceSpecification extends Specification {
         then: 'abandoned, completed and own tasks should not show'
         ! mst1subt.intersect(gotIds) // own subtasks not contained
         ! mst2subt.intersect(gotIds) // abandoned subtasks not contained
+    }
+
+    def 'createOrUpdateMilestone should update an existing Milestone'(){
+        when: 'we have milestone FullDtos'
+        def mst1 = milestoneService.getMilestoneDetails(1L)
+        def mst2 = milestoneService.getMilestoneDetails(2L)
+        and: 'we change attributes and associated subtasks'
+        mst1.args.name = 'TestNameToUpdate'
+        mst1.args.state = MilestoneState.COMPLETED
+        def subs1 = mst1.related.subtask
+        def subs2 = mst2.related.subtask
+        def removed = subs1[2].id.second
+        def added = subs2[1].id.second
+        subs1.remove(2)
+        subs1.add(subs2[1])
+        mst1.related.subtask = subs1
+        and: 'we update the Milestone'
+        milestoneService.createOrUpdateMilestone(mst1)
+        and: 'retrieve it back from db'
+        def mstDb = milestoneService.getMilestoneDetails(1L)
+        def rel = mstDb.related.subtask.collect {it.id.second}
+        then: 'all changes should be there'
+        mstDb.args.name == 'TestNameToUpdate'
+        mstDb.args.state == MilestoneState.COMPLETED
+        rel.contains(added)
+        ! rel.contains(removed)
+    }
+
+    def 'createOrUpdateMilestone should create a new Milestone'(){
+        when: 'we have milestone FullDtos'
+        def mstcr1 = new FullDto()
+        def mst3 = milestoneService.getMilestoneDetails(3L)
+        and: 'we set attributes and associated subtasks'
+        mstcr1.args.name = 'TestNameToCreate'
+        mstcr1.args.state = MilestoneState.OPEN
+        def subs2 = mst3.related.subtask
+        mstcr1.related.subtask = subs2
+        def ids = subs2.id.second
+        and: 'we update the Milestone'
+        def mstsaved = milestoneService.createOrUpdateMilestone(mstcr1)
+        def newid = mstsaved.id.second
+        and: 'retrieve it back from db'
+        def mstDb = milestoneService.getMilestoneDetails(newid)
+        def rel = mstDb.related.subtask.collect {it.id.second}
+        then: 'all values should be there'
+        newid
+        mstDb.args.name == 'TestNameToCreate'
+        rel.containsAll(ids)
+        mstDb.args.state == MilestoneState.OPEN
     }
 }

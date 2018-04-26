@@ -95,7 +95,7 @@ class MilestoneService {
                     [TaskState.COMPLETED, TaskState.ABANDONED])
             subs.findAll {
                 it.milestone.one?.id != id
-            }.sort {a, b ->
+            }.sort { a, b ->
                 a.name <=> b.name
             }.each {
                 subtasks.add ListItemDto.makeDto(it)
@@ -104,8 +104,36 @@ class MilestoneService {
         subtasks
     }
 
+    @Transactional
+    FullDto createOrUpdateMilestone(FullDto command) {
+        Milestone milestone
+        // for update, database id is set, else it's a create
+        if (command.id.second) {
+            milestone = milestoneRepository.findOne(command.id.second)
+        } else {
+            milestone = new Milestone()
+        }
+        // set all fields
+        milestone.name = command.args.name
+        def st = command.args.state.find()
+        milestone.state = st ?: MilestoneState.OPEN
+        LocalDate date = command.args.duedate
+        milestone.dueDate = date?.toDate()
+        // handle association
+        def newSubtaskIds = command.related.subtask.collect { it.id.second }
+        def oldSubtaskIds = milestone.subtask.all.id
+        def idsToRemove = oldSubtaskIds - newSubtaskIds
+        def idsToAdd = newSubtaskIds - oldSubtaskIds
+        def subsToRemove = subtaskRepository.findAll idsToRemove
+        def subsToAdd = subtaskRepository.findAll idsToAdd
+        milestone.subtask.add subsToAdd
+        subsToRemove.each {milestone.subtask.remove it}
+        milestoneRepository.save milestone
+        makeFullDto milestone
+    }
+
     /**
-     * actually build the dto from database content
+     * actually build the dto from domain object
      * @param milestone
      * @return the dto
      */
@@ -113,7 +141,9 @@ class MilestoneService {
         FullDto dto = new FullDto()
         if (milestone) {
             // create key
-            dto.id = new Tuple2<String, Serializable>(Dto.makeIdKey(milestone), milestone.id)
+            dto.id = new Tuple2<String, Serializable>(
+                    Dto.makeIdKey(milestone), milestone.id
+            )
             dto.tag = milestone.name
             // set simple attributes
             dto.args['name'] = milestone.name
@@ -127,7 +157,9 @@ class MilestoneService {
                 dto.args['dueDate'] = LocalDate.of(2000, 1, 1)
             }
             // set association to subtasks
-            dto.related.subtask = milestone?.subtask.all.collect { ListItemDto.makeDto(it) } ?: []
+            dto.related.subtask = milestone?.subtask.all.collect {
+                ListItemDto.makeDto(it)
+            } ?: []
         }
         dto
     }

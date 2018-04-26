@@ -25,19 +25,37 @@
 package de.geobe.tbp.core
 
 import de.geobe.tbp.core.domain.TaskState
+import de.geobe.tbp.core.repository.MilestoneRepository
 import de.geobe.tbp.core.repository.SubtaskRepository
+import de.geobe.tbp.core.repository.TaskRepository
+import de.geobe.tbp.core.service.StartupService
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
 import org.springframework.boot.test.context.SpringBootTest
 import spock.lang.Specification
 
 /**
  * Created by georg beier on 25.04.2018.
  */
-@SpringBootTest
+@DataJpaTest // makes only repository beans available through @Autowired
 class SubtaskRepositorySpecification extends Specification {
 
     @Autowired
     private SubtaskRepository subtaskRepository
+    @Autowired
+    private TaskRepository taskRepository
+    @Autowired
+    private MilestoneRepository milestoneRepository
+
+    private static StartupService startupService
+
+    def setup(){
+        // initialize only once
+        if (!startupService) {
+            startupService = new StartupService()
+            startupService.createTestData(taskRepository, milestoneRepository)
+        }
+    }
 
     def "findAllByStateNotIn should allow to mask certain Subtask states"() {
         when: 'we retrieve all SubTasks'
