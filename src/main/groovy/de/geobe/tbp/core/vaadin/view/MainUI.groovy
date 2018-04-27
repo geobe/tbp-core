@@ -103,5 +103,6 @@ class MainUI extends UI {
         taskStructureTree.init()
         taskStructureTree.expandAll()
         milestoneList.init()
+        milestoneDetailView.init()
     }
 }

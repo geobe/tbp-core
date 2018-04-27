@@ -90,16 +90,17 @@ class MilestoneService {
     List<ListItemDto> getSubtaskSelectList(Serializable id) {
         def subtasks = []
         Milestone milestone = milestoneRepository.findOne(id)
-        if (milestone.state != MilestoneState.COMPLETED) {
-            def subs = subtaskRepository.findAllByStateNotIn(
-                    [TaskState.COMPLETED, TaskState.ABANDONED])
-            subs.findAll {
+        def subs = subtaskRepository.findAllByStateNotIn(
+                [TaskState.COMPLETED, TaskState.ABANDONED])
+        if (milestone?.state != MilestoneState.COMPLETED) {
+            subs = subs.findAll {
                 it.milestone.one?.id != id
-            }.sort { a, b ->
-                a.name <=> b.name
-            }.each {
-                subtasks.add ListItemDto.makeDto(it)
             }
+        }
+        subs.sort { a, b ->
+            a.name <=> b.name
+        }.each {
+            subtasks.add ListItemDto.makeDto(it)
         }
         subtasks
     }

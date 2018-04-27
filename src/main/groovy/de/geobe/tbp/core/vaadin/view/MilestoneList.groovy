@@ -61,6 +61,8 @@ class MilestoneList extends SubTree
     @Autowired
     private MilestoneService milestoneService
 
+    private MilestoneDetailView milestoneDetailView
+
     /**
      * build component subtree.
      * @return topmost component (i.e. root) of subtree
@@ -73,7 +75,8 @@ class MilestoneList extends SubTree
                 "$F.list"([uikey   : MILESTONE_LIST,
                         selectionListener: {MultiSelectionEvent<ListItemDto> event ->
                             Optional item = event.firstSelectedItem
-                            println item.present ? item.get() : 'nothing selected'
+                            if(item.present)
+                                milestoneDetailView.onItemSelected item.get()
                         },
                            sizeFull: null])
             }
@@ -87,7 +90,14 @@ class MilestoneList extends SubTree
         milestoneList.dataProvider = listData
     }
 
-/**
+    /**
+     * disable component while editing the selected item
+     */
+    void onEditItem() {
+        milestoneList.enabled = false
+    }
+
+    /**
      * enable and update the selector component after editing an item
      * @param itemId identifies edited item
      * @param caption eventually updated caption of the edited item
@@ -96,6 +106,23 @@ class MilestoneList extends SubTree
      */
     @Override
     void onEditItemDone(Tuple2<String, Long> itemId, String caption, boolean mustReload) {
+        def selected = milestoneList.selectedItems.asList()
+        if(mustReload) {
+            listData = DataProvider.ofCollection(milestoneService.milestoneList)
+            milestoneList.dataProvider = listData
+            def toSelect =listData.items.find {it.id.second == itemId.second }
+            milestoneList.select(toSelect)
+        } else if(selected) {
+            def item = selected[0]
+            if(item.id.second == itemId.second && item.tag != caption) {
+                println "updating $item.tag to $caption"
+                item.tag = caption
+            }
+        }
+        milestoneList.enabled = true
+    }
 
+    void setMilestoneDetailView(MilestoneDetailView dv) {
+        milestoneDetailView = dv
     }
 }

@@ -181,7 +181,7 @@ class TaskDetailView extends SubTree
     void onItemSelected(NodeDto nodeDto) {
         currentItemId = nodeDto.id
         viewBehavior.initItem(currentItemId.second)
-        viewBehavior.execute(DVEvent.Select)
+        viewBehavior.execute(DVEvent.Select, currentItemId.second)
     }
 
     void onRootChanged(NodeDto rootNodeDto) {
@@ -221,6 +221,12 @@ class TaskDetailView extends SubTree
             }
             prepareDialog()
         }
+
+        @Override
+        protected void onItemSelected(Long itemId) {
+            // TODO: move initItem functionality to here
+        }
+
         /** prepare for editing in EDIT state */
         @Override
         protected void editmode() {
