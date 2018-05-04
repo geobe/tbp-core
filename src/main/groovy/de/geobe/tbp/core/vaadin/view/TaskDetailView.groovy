@@ -280,7 +280,7 @@ class TaskDetailView extends SubTree
         /** leaving CREATE or CREATEEMPTY state with cancel */
         protected void onCreateCancel() {
             dialog.window.close()
-            onEditDone()
+            onEditDone(false)
         }
 
         /** clear all editable fields */
