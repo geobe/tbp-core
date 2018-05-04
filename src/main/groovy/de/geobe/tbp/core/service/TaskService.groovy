@@ -100,7 +100,7 @@ class TaskService {
             }
         }
         if (task instanceof Subtask) {
-            if(command.related.milestone) {
+            if (command.related.milestone) {
                 def mistId = command.related.milestone?.first()?.id.second
                 if (mistId) {
                     Milestone mist = milestoneRepository.findOne(mistId)
@@ -161,7 +161,15 @@ class TaskService {
     }
 
     private TaskNodeDto makeTaskSubTree(Subtask task) {
-        makeTaskNode(task)
+        def dto = makeTaskNode(task)
+        if (task.milestone.one) {
+            def mst = task.milestone.one
+            def node = new NodeDto([id : Dto.makeId(mst),
+                                    tag: mst.name])
+            List<NodeDto> milestoneDtos = [node]
+            dto.related.milestone = milestoneDtos
+        }
+        dto
     }
 
     private FullDto makeFullDto(Task task) {

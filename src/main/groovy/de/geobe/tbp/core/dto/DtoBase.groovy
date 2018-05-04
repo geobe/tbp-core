@@ -59,8 +59,6 @@ class ListItemDto implements IdProvider<Tuple2<String, Serializable>> {
  * kinds of related objects to display associations
  */
 class NodeDto extends ListItemDto {
-//    Tuple2<String, Long> id = new Tuple2<String, Long>('', 0)
-//    String tag
     Map<String, List<NodeDto>> related = [:]
 
     @Override
@@ -92,6 +90,12 @@ class Dto {
         def cln = domainObject.class.name
         def key = cln.replaceFirst(/.*\./, '')
         key
+    }
+
+    static makeId(def domainObject) {
+        def id = new Tuple2<String, Long>(
+                Dto.makeIdKey(domainObject), domainObject.id)
+        id
     }
 }
 
