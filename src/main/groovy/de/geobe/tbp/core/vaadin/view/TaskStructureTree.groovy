@@ -24,14 +24,20 @@
 
 package de.geobe.tbp.core.vaadin.view
 
+import com.vaadin.data.TreeData
+import com.vaadin.data.provider.TreeDataProvider
 import com.vaadin.event.selection.SelectionEvent
+import com.vaadin.server.Page
 import com.vaadin.spring.annotation.SpringComponent
 import com.vaadin.spring.annotation.UIScope
+import com.vaadin.ui.CheckBox
 import com.vaadin.ui.Component
+import com.vaadin.ui.Layout
 import com.vaadin.ui.Tree
 import de.geobe.tbp.core.dto.NodeDto
 import de.geobe.tbp.core.dto.TaskNodeDto
 import de.geobe.tbp.core.service.TaskService
+import de.geobe.tbp.core.vaadin.view.helper.AssociationNode
 import de.geobe.util.vaadin.builder.SubTree
 import de.geobe.util.vaadin.helper.VaadinSelectionModel
 import de.geobe.util.vaadin.helper.VaadinTreeHelper
@@ -55,20 +61,45 @@ class TaskStructureTree extends SubTree
     public static final String COMPOUND_TYPE = 'CompoundTask'
     public static final String SUBTASK_TYPE = 'Subtask'
 
+    private static final Set<String> TYPES = [PROJECT_TYPE, COMPOUND_TYPE, SUBTASK_TYPE]
+
+    private static final String TREELAYOUT = 'treelayout'
     private static final String TASKTREE = 'tasktree'
+    private static final String ASSOC_BOX = 'showAssocBox'
     private static final String MENU = 'logoutmenu'
+    private Layout treelayout
     private Tree<NodeDto> taskTree
     private VaadinTreeHelper treeHelper
+    private CheckBox showAssocBox
 
     private uiComponents
 
     private NodeDto selectedProjectNode
+    /** store dtos for tree refresh */
+    private List<TaskNodeDto> rootNodes
     private VaadinSelectionModel selectionModel = new VaadinSelectionModel()
 
+    private boolean showAssociations = false
+
     /** Closure to find subnodes to a task node */
-    private collector = { TaskNodeDto dto ->
-        dto.related.subtask
+    private collector = { def parentNode ->
+        if (parentNode instanceof NodeDto) {
+            switch (parentNode.id.first) {
+                case 'Project':
+                case 'CompoundTask':
+                    parentNode.related.subtask
+                    break
+                case 'Subtask':
+                    if (showAssociations)
+                        [new AssociationNode(parentNode, 'milestone')]
+                    break
+                default:
+                    parentNode.related[AssociationNode.LINK]
+                    break
+            }
+        }
     }
+
     private getSelectedProjectId() { selectedProjectNode.id }
 
     @Autowired
@@ -84,19 +115,35 @@ class TaskStructureTree extends SubTree
 //            "$F.menubar"([uikey: MENU]) {
 //                "$F.menuitem"('Logout', [command: { vaadinSecurity.logout() }])
 //            }
-            "$C.panel"('Task Tree', [spacing: true, margin: true]) {
-                "$F.tree"('Projects and Tasks',
-                        [uikey            : TASKTREE, caption: 'Task Tree',
-                         selectionListener: {treeValueChanged(it)}])
+            "$C.vlayout"([uikey  : TREELAYOUT,
+                          spacing: true,
+                          margin : true]) {
+                "$C.panel"('Projects and Tasks') {
+                    "$F.tree"([uikey            : TASKTREE,
+                               caption          : 'Task Tree',
+                               selectionListener: {
+                                   treeValueChanged(it)
+                               }])
+                }
+                "$F.checkbox"('show associations',
+                        [uikey              : ASSOC_BOX,
+                         value              : false,
+                         valueChangeListener: {
+                             showAssociations = showAssocBox.value
+                             rebuildTree(rootNodes)
+                         }])
             }
         }
     }
 
     @Override
     void init(Object... value) {
+        treelayout = subtreeComponent TREELAYOUT
         taskTree = subtreeComponent TASKTREE
+        showAssocBox = subtreeComponent ASSOC_BOX
         treeHelper = new VaadinTreeHelper<TaskNodeDto>(taskTree)
-        treeHelper.buildTree(taskService.getProjectTree(), collector)
+        rootNodes = taskService.projectTree
+        treeHelper.buildTree(rootNodes, collector)
 
     }
 
@@ -112,12 +159,25 @@ class TaskStructureTree extends SubTree
                 selectionModel.notifyRootChange(topItemNode)
                 selectedProjectNode = topItemNode
             }
-            if (selectNode.isPresent() && selectNode.get() instanceof NodeDto) {
-                selectionModel.notifyChange(selectNode.get())
+            if (selectNode.get() instanceof NodeDto) {
+                def node = selectableItem selectNode.get()
+                if (node)
+                    selectionModel.notifyChange node
             }
         }
     }
 
+    private selectableItem(NodeDto selected) {
+        if (selected?.id.first in TYPES) {
+            selected
+        } else if (selected) {
+            TreeData<NodeDto> treeData =
+                    ((TreeDataProvider<NodeDto>) taskTree.dataProvider).treeData
+            selectableItem treeData.getParent(selected)
+        } else {
+            null
+        }
+    }
 
     /**
      * disable the tree while a tree item is edited on one of the tab pages
@@ -127,7 +187,11 @@ class TaskStructureTree extends SubTree
     }
 
     public void expandAll() {
-        treeHelper.expandAll()
+        taskTree.expand(
+                treeHelper.allItems().findAll { NodeDto item ->
+                    item.id.first in TYPES
+                }
+        )
     }
 
     /**
@@ -139,12 +203,8 @@ class TaskStructureTree extends SubTree
      */
     public void onEditItemDone(Tuple2<String, Serializable> itemId, String caption, boolean mustReload = false) {
         if (mustReload) {
-            def expandedNodeIds = treeHelper.idsOfExpanded
-            def selectedNodeId = itemId//taskTree.selectedItems.find()?.id
-            treeHelper.clear()
-            treeHelper.buildTree(taskService.getProjectTree(), collector)
-            treeHelper.reexpand(expandedNodeIds)
-            treeHelper.reselect(selectedNodeId)
+            rootNodes = taskService.projectTree
+            rebuildTree(rootNodes)
         } else {
             def selected = taskTree.selectedItems?.first()
             if (selected?.id == itemId && selected?.tag != caption) {
@@ -154,4 +214,15 @@ class TaskStructureTree extends SubTree
         }
         taskTree.enabled = true
     }
+
+    private rebuildTree(List<NodeDto> roots) {
+        def expandedNodeIds = treeHelper.idsOfExpanded
+        def selectedNodeId = taskTree.selectedItems.find()?.id
+        treeHelper.clear()
+        treeHelper.buildTree(roots, collector)
+        treeHelper.reexpand(expandedNodeIds)
+        treeHelper.reselect(selectedNodeId)
+    }
+
+
 }
