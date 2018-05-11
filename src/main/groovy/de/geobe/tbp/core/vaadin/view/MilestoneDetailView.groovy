@@ -313,6 +313,7 @@ class MilestoneDetailView extends SubTree
         @Override
         protected void clearFields() {
             state.deselectAll()
+            subtaskSelect.select([])
             subtaskSelect.dataProvider = DataProvider.ofCollection([])
             [name, dateDue].each { it.clear() }
         }
@@ -346,9 +347,9 @@ class MilestoneDetailView extends SubTree
             state.select currentDto.args.state ?: ''
             def select = currentDto.related.subtask
             def all = selectableSubtasks + select
-            subtaskSelect.deselectAll()
+            subtaskSelect.select([])
             subtaskSelect.dataProvider = DataProvider.ofCollection(all)
-            subtaskSelect.deselectAll()
+//            subtaskSelect.deselectAll()
             subtaskSelect.select(select.toArray())
         }
 
